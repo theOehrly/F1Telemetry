@@ -285,7 +285,7 @@ for i in range(300):
     ret, frame = cap.read()
     # print(i)
 
-# csv_file = open('out.csv', "w")
+# csv_file = open('results/out.csv', "w")
 
 frame_n = 0
 
