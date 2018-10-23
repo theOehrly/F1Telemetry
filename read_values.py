@@ -285,9 +285,9 @@ for i in range(300):
     ret, frame = cap.read()
     # print(i)
 
-# csv_file = open('results/out.csv', "w")
+csv_file = open('results/out.csv', "w")
 
-frame_n = 0
+frame_number = 0
 
 while True:
     ret, frame = cap.read()
@@ -316,24 +316,19 @@ while True:
         t4.join()
         t5.join()
 
-        speed_value = ocr_values[0]
-        rpm_value = ocr_values[1]
-        gear_value = ocr_values[2]
+        # print(ocr_values)
 
-        # print(speed_value, throttle_value, brake_value, rpm_value, gear_value)
-        #
+        # convert data to str for writing to file
+        for i in range(len(ocr_values)):
+            ocr_values[i] = str(ocr_values[i])
 
-        # csv_file.write(str(speed_value) + ";"
-        #                + str(throttle_value) + ";"
-        #                + str(brake_value) + ";"
-        #                + str(rpm_value) + ";"
-        #                + str(gear_value) + ";"
-        #                + str(frame_n) + "\n")
-        frame_n += 1
-        print(frame_n)
+        csv_file.write('; '.join(ocr_values) + '; ' + str(frame_number) + '\n')
+
+        frame_number += 1
+        print(frame_number)
 
     else:
         break
 
 cv2.destroyAllWindows()
-# csv_file.close()
+csv_file.close()
