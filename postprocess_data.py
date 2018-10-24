@@ -147,9 +147,9 @@ speed_smooth = list()
 window_length = 15
 polyorder = 2
 
-for i in range(1, len(speed_seg_points)):
-    current_point = speed_seg_points[i]
-    previous_point = speed_seg_points[i-1]
+for n in range(1, len(speed_seg_points)):
+    current_point = speed_seg_points[n]
+    previous_point = speed_seg_points[n-1]
     if current_point - previous_point >= window_length:
         speed_smooth.extend(savgol_filter(speed_tmp[previous_point:current_point], window_length, polyorder))
     else:
