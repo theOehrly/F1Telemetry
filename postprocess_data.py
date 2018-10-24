@@ -147,10 +147,10 @@ speed_smooth = list()
 window_length = 15
 polyorder = 2
 
-previous_point = 0
-while speed_seg_points:
-    current_point = speed_seg_points.pop(0)
-    if current_point-previous_point >= window_length:
+for i in range(1, len(speed_seg_points)):
+    current_point = speed_seg_points[i]
+    previous_point = speed_seg_points[i-1]
+    if current_point - previous_point >= window_length:
         speed_smooth.extend(savgol_filter(speed_tmp[previous_point:current_point], window_length, polyorder))
     else:
         # the segment to be smoothed is shorter than the filter settings allow
@@ -167,8 +167,6 @@ while speed_seg_points:
             pl = polyorder
         # smooth current semgent with determined setting
         speed_smooth.extend(savgol_filter(speed_tmp[previous_point:current_point], wl, pl))
-
-    previous_point = current_point
 
 
 with open('results/smooth_speed.csv', 'w') as csvfile:
