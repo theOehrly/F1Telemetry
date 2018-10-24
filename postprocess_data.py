@@ -2,6 +2,7 @@
 # order in csv file: speed, rpm, gear, brake, throttle, frame
 
 from scipy.signal import savgol_filter
+import numpy
 import matplotlib.pyplot as plt
 
 
@@ -64,7 +65,85 @@ def get_points_of_change(data, min_decel=-1):
     return points_of_change
 
 
-def filter_points_of_change(data, min_sector):
+class MatplotUserInput:
+    # class for retrieving user input data from pyplot window
+    # first/second/... are called as button callbacks; script later reads response value
+    # plt.close() makes plot close on button click
+    response = None
+
+    def first(self, *args):
+        self.response = 1
+        plt.close()
+
+    def second(self, *args):
+        self.response = 2
+        plt.close()
+
+    def both(self, *args):
+        self.response = 3
+        plt.close()
+
+    def none(self, *args):
+        self.response = -1
+        plt.close()
+
+
+def userinput_filter_points_of_change(data, points_o_c, i):
+    # calculate min and max value of the area to be viewed
+    # area is +-100 around the problem region but limited to zero or max if necessary
+    x_view_min = points_o_c[i] - 100 if points_o_c[i] - 100 > 0 else 0
+    x_view_max = points_o_c[i + 2] + 100 if points_o_c[i + 2] + 100 < len(data) else len(data)
+    # set the x and y data to be plotted from area size
+    x = range(x_view_min, x_view_max)
+    y = data[x_view_min:x_view_max]
+    # calculate min and max y axis value from y data for purpose of scaling the plot
+    y_view_min = min(k for k in y) * 0.9
+    y_view_max = max(k for k in y) * 1.1
+
+    # add some vertical red bars to clearly mark the region of error
+    bar_1 = [[points_o_c[i] - 3, points_o_c[i] - 3], [y_view_min, y_view_max]]
+    bar_2 = [[points_o_c[i + 1], points_o_c[i + 1]], [y_view_min, y_view_max]]
+    bar_3 = [[points_o_c[i + 2] + 3, points_o_c[i + 2] + 3], [y_view_min, y_view_max]]
+    # plot all the stuff
+    # plt.ion()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(x, y)
+    ax.plot(bar_1[0], bar_1[1], 'r')
+    ax.plot(bar_2[0], bar_2[1], 'r')
+    ax.plot(bar_3[0], bar_3[1], 'r')
+
+    # initalize a response class; it's subfunctions are set as button callback
+    response = MatplotUserInput()
+
+    # define an axis per button, add button to axis, add callback functio
+    first_button_ax = fig.add_axes([0.5, 0.01, 0.09, 0.04])
+    first_button = plt.Button(first_button_ax, 'First', hovercolor='0.975')
+    first_button.on_clicked(response.first)
+
+    second_button_ax = fig.add_axes([0.6, 0.01, 0.09, 0.04])
+    second_button = plt.Button(second_button_ax, 'Second', hovercolor='0.975')
+    second_button.on_clicked(response.second)
+
+    both_button_ax = fig.add_axes([0.7, 0.01, 0.09, 0.04])
+    both_button = plt.Button(both_button_ax, 'Both', hovercolor='0.975')
+    both_button.on_clicked(response.both)
+
+    none_button_ax = fig.add_axes([0.8, 0.01, 0.09, 0.04])
+    none_button = plt.Button(none_button_ax, 'None', hovercolor='0.975')
+    none_button.on_clicked(response.none)
+
+    # also add some text that tells the user what's the problem
+    # is added to none_button_ax because it needs an axes... so I just used that one
+    none_button_ax.text(-7.5, 0.01, 'Two spikes in short succession!\nWhich area needs to be removed?',
+                        fontsize=9, color='red')
+    # show plot, button clicks automatically close the window by calling plt.close() from response class
+    plt.show()
+
+    return response.response
+
+
+def filter_points_of_change(points_o_c, data, min_sector=5):
     # filters a list of points of change
     # if to points in this list are closer together than min_sector, those points are dismissed
     # TODO probable Issue when an error point and a correct point are too close together
@@ -73,15 +152,25 @@ def filter_points_of_change(data, min_sector):
     error_segments = list()
     exclude_next = False
 
-    for i in range(len(data)-1):
+    for i in range(len(points_o_c) - 1):
         if exclude_next:
             exclude_next = False
             continue
 
-        if data[i+1] - data[i] > min_sector:
-            relevant_points.append(data[i])
+        if points_o_c[i + 1] - points_o_c[i] > min_sector:
+            relevant_points.append(points_o_c[i])
         else:
-            error_segments.append((data[i], data[i+1]))
+            # check wether another point of change still exist
+            # then check whether the point and the one after that are further apart than min_sector
+            if len(points_o_c) > i+2 and points_o_c[i + 2] - points_o_c[i + 1] < min_sector:
+                # we now have two sectors which are shorter than allowed following each other
+                # this can be caused by to following errors OR one error being close to a correct point
+                # these two cases are very difficult to distinguish an can't be hnadled in software currently
+                # therefore the script plots the concerning region and ask for help
+
+                response = userinput_filter_points_of_change(data, points_o_c, i)
+
+            error_segments.append((points_o_c[i], points_o_c[i + 1]))
             exclude_next = True
 
     return relevant_points, error_segments
@@ -128,7 +217,7 @@ speed_deriv = derive(speed_tmp)
 speed_points_of_change = get_points_of_change(speed_deriv)
 # filter out those segements where the change is shorter than min_sector
 # this is very likely a spike due to readout errors
-rel, speed_error_segments = filter_points_of_change(speed_points_of_change, min_sector=10)
+rel, speed_error_segments = filter_points_of_change(speed_points_of_change, speed_tmp, min_sector=10)
 # bridge over those error segemnts
 bridge_error_segments(speed_tmp, speed_error_segments)
 
