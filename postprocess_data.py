@@ -146,19 +146,21 @@ def userinput_filter_points_of_change(data, points_o_c, i):
 def filter_points_of_change(points_o_c, data, min_sector=5):
     # filters a list of points of change
     # if to points in this list are closer together than min_sector, those points are dismissed
-    # TODO probable Issue when an error point and a correct point are too close together
     # function returns a list of relevant points and a list with pairs of error points
     relevant_points = list()
     error_segments = list()
-    exclude_next = False
+    # exclude_next = False
 
-    for i in range(len(points_o_c) - 1):
-        if exclude_next:
-            exclude_next = False
-            continue
+    # for i in range(len(points_o_c) - 1):
+    i = 0
+    while i < len(points_o_c) - 1:
+        # if exclude_next:
+        #     exclude_next = False
+        #     continue
 
         if points_o_c[i + 1] - points_o_c[i] > min_sector:
             relevant_points.append(points_o_c[i])
+            i += 1
         else:
             # check wether another point of change still exist
             # then check whether the point and the one after that are further apart than min_sector
@@ -170,8 +172,24 @@ def filter_points_of_change(points_o_c, data, min_sector=5):
 
                 response = userinput_filter_points_of_change(data, points_o_c, i)
 
-            error_segments.append((points_o_c[i], points_o_c[i + 1]))
-            exclude_next = True
+                if response == 1:
+                    # delete first
+                    error_segments.append((points_o_c[i], points_o_c[i+1]))
+                    i += 3  # skip over both
+                elif response == 2:
+                    # delete second
+                    relevant_points.append(points_o_c[i])
+                    error_segments.append((points_o_c[i+2], points_o_c[i+3]))
+                    i += 3  # skip over both
+                elif response == 3:
+                    # delete both; only first ist deleted actively, code takes care of second one
+                    error_segments.append((points_o_c[i], points_o_c[i+1]))
+                    i += 2  # only skip first issue, standard check takes care of second one
+                elif response == -1:
+                    i += 3
+            else:
+                error_segments.append((points_o_c[i], points_o_c[i + 1]))
+                i += 2  # skip over next point
 
     return relevant_points, error_segments
 
@@ -263,3 +281,4 @@ with open('results/smooth_speed.csv', 'w') as csvfile:
         csvfile.write(str(value) + '\n')
     csvfile.close()
 
+# TODO loosing segments

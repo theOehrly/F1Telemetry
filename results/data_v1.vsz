@@ -1,5 +1,5 @@
 # Veusz saved document (version 3.0.1.1)
-# Saved at 2018-10-23T21:17:49.404489
+# Saved at 2018-10-24T20:12:38.779699
 
 AddImportPath(u'D:\\Dateien\\Python\\Projekte\\F1Telemetry\\results')
 ImportFileCSV(u'out.csv', blanksaredata=True, delimiter=u';', headermode=u'none', linked=True)
