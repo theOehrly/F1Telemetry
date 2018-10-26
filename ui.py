@@ -16,7 +16,7 @@ class VideoSource:
 
         self.current_frame = None
         self.playback_direction = 1  # either 1 or -1
-        self.frame_by_frame = False  # if true, frames are returned without delay
+        self.frame_by_frame = False  # if true, frames are returned without
         self.source_fps = self.capture.get(cv2.CAP_PROP_FPS)  # video fps
         self.frame_duration = int(1000 / self.source_fps)  # duration of one frame
         self.total_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -52,7 +52,7 @@ class VideoSource:
     def change_playback_speed(self, factor):
         if factor > 0:
             self.playback_direction = 1
-        else:
+        elif factor < 0:
             self.playback_direction = -1
 
         self.frame_duration = int(1000 / (self.source_fps * abs(factor)))
@@ -144,9 +144,9 @@ class Application(tk.Tk):
             self.video_source.playback_direction = 1
             self.enable_frame_by_frame()
         elif factor != 0 and not self.playing:
-            self.video_source.change_playback_speed(factor)
             self.playing = True
             self.disable_frame_by_frame()
+            self.video_source.change_playback_speed(factor)
             # start playback
             self.after(1, self.video_loop)
         else:
@@ -154,12 +154,13 @@ class Application(tk.Tk):
 
     def prev_frame(self):
         # set flag in video source telling it that the next requested frame will be previous one
-        self.video_source.reverse_once = True
+        self.video_source.playback_direction = -1
         # call videoloop without setting player state to playing so it will only run once
         self.after(1, self.video_loop)
 
     def next_frame(self):
         # call videoloop without setting player state to playing so it will only run once
+        self.video_source.playback_direction = 1
         self.after(1, self.video_loop)
 
     def enable_frame_by_frame(self):
@@ -175,6 +176,7 @@ class Application(tk.Tk):
         self.btn_next_frame['state'] = tk.DISABLED
 
         self.video_source.frame_by_frame = False
+        self.video_source.playback_direction = self.bar_playback['value']
 
     def destructor(self):
         # destroy everything and exit
