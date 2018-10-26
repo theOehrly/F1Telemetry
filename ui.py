@@ -31,8 +31,8 @@ class VideoSource:
             self.reverse_once = False  # reset always
             time_position_is = self.capture.get(cv2.CAP_PROP_POS_MSEC)
             if time_position_is >= 0:
+                # set new timecode
                 time_position_new = time_position_is - 2 * (1000 / self.source_fps)
-
                 self.capture.set(cv2.CAP_PROP_POS_MSEC, time_position_new)
             else:
                 return None
@@ -75,6 +75,17 @@ class Application(tk.Tk):
         self.panel.pack(padx=10, pady=10, side=tk.TOP)
         self.config(cursor="arrow")
 
+        # add playback progress bar with labels left/rigth
+        self.top_row = tk.PanedWindow()
+        self.top_row.pack(side=tk.TOP)
+        self.label_time_code = tk.Label(text='0f/ 0s', padx=10, width=10)
+        self.top_row.add(self.label_time_code)
+        self.bar_playback = ttk.Progressbar(self.top_row, orient="horizontal", mode="determinate", length=1000)
+        self.bar_playback['maximum'] = self.video_source.duration
+        self.top_row.add(self.bar_playback)
+        self.label_end_time = tk.Label(text=str(self.video_source.duration)+'s', padx=10, width=10)
+        self.top_row.add(self.label_end_time)
+
         # add buttons for playback control
         # show previous frame
         self.btn_prev_frame = tk.Button(self, text="<", command=self.prev_frame, width=3, state=tk.DISABLED)
@@ -102,6 +113,13 @@ class Application(tk.Tk):
             imgtk = ImageTk.PhotoImage(image=frame)  # convert image for tkinter
             self.panel.imgtk = imgtk  # anchor imgtk so it does not be deleted by garbage-collector
             self.panel.config(image=imgtk)  # show the image
+
+            # playback progress information
+            time_code = self.video_source.capture.get(cv2.CAP_PROP_POS_MSEC) / 1000
+            frame = int(self.video_source.capture.get(cv2.CAP_PROP_POS_FRAMES))
+            self.label_time_code['text'] = str(frame) + ' / ' + "{0:.2f}".format(time_code) + 's'
+            self.bar_playback['value'] = time_code
+
         if self.playing:
             self.after(1, self.video_loop)  # call the same function again
 
