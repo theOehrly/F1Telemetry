@@ -5,6 +5,7 @@
 
 from PIL import Image, ImageTk
 import tkinter as tk
+from tkinter import ttk
 import cv2
 
 
@@ -60,32 +61,32 @@ class VideoSource:
         self.capture.release()
 
 
-class Application:
+class Application(tk.Tk):
     def __init__(self, video_source):
+        super(Application, self).__init__()
         self.video_source = video_source  # videosource class provides advanced playback options
 
         self.playing = True  # set player state
 
-        self.root = tk.Tk()  # initialize root window
-        self.root.title("F1 Video Telemetry ")  # set window title
+        self.title("F1 Video Telemetry ")  # set window title
         # self.destructor function gets fired when the window is closed
-        self.root.protocol('WM_DELETE_WINDOW', self.destructor)
-        self.panel = tk.Label(self.root)  # initialize image panel
-        self.panel.pack(padx=10, pady=10)
-        self.root.config(cursor="arrow")
+        self.protocol('WM_DELETE_WINDOW', self.destructor)
+        self.panel = tk.Label(self)  # initialize image panel
+        self.panel.pack(padx=10, pady=10, side=tk.TOP)
+        self.config(cursor="arrow")
 
         # add buttons for playback control
         # show previous frame
-        self.btn_prev_frame = tk.Button(self.root, text="<", command=self.prev_frame, width=3, state=tk.DISABLED)
+        self.btn_prev_frame = tk.Button(self, text="<", command=self.prev_frame, width=3, state=tk.DISABLED)
         self.btn_prev_frame.pack(padx=10, pady=10, side=tk.LEFT)
         # play/pause playback
-        self.btn_pause = tk.Button(self.root, text="Play / Pause", command=self.playpause, width=10)
+        self.btn_pause = tk.Button(self, text="Play / Pause", command=self.playpause, width=10)
         self.btn_pause.pack(padx=0, pady=0, side=tk.LEFT)
         # show next frame
-        self.btn_next_frame = tk.Button(self.root, text=">", command=self.next_frame, width=3, state=tk.DISABLED)
+        self.btn_next_frame = tk.Button(self, text=">", command=self.next_frame, width=3, state=tk.DISABLED)
         self.btn_next_frame.pack(padx=10, pady=10, side=tk.LEFT)
         # set playback speed
-        self.slider_speed = tk.Scale(self.root, command=self.change_playback_speed, orient='horizontal',
+        self.slider_speed = tk.Scale(self, command=self.change_playback_speed, orient='horizontal',
                                      from_=-5, to=5, resolution=0.1, length=300)
         self.slider_speed.set(1.0)  # set slider to 1.0
         self.slider_speed.pack(padx=10, pady=10, side=tk.LEFT)
@@ -102,7 +103,7 @@ class Application:
             self.panel.imgtk = imgtk  # anchor imgtk so it does not be deleted by garbage-collector
             self.panel.config(image=imgtk)  # show the image
         if self.playing:
-            self.root.after(1, self.video_loop)  # call the same function again
+            self.after(1, self.video_loop)  # call the same function again
 
     def playpause(self):
         if self.playing:
@@ -114,7 +115,7 @@ class Application:
             self.playing = True
             # disable frame - by - frame buttons
             self.disable_frame_by_frame()
-            self.root.after(1, self.video_loop)
+            self.after(1, self.video_loop)
 
     def change_playback_speed(self, factor):
         # changes playback speed; default playbackspeed is multiplied by "factor"
@@ -129,7 +130,7 @@ class Application:
             self.playing = True
             self.disable_frame_by_frame()
             # start playback
-            self.root.after(1, self.video_loop)
+            self.after(1, self.video_loop)
         else:
             self.video_source.change_playback_speed(factor)
 
@@ -137,11 +138,11 @@ class Application:
         # set flag in video source telling it that the next requested frame will be previous one
         self.video_source.reverse_once = True
         # call videoloop without setting player state to playing so it will only run once
-        self.root.after(1, self.video_loop)
+        self.after(1, self.video_loop)
 
     def next_frame(self):
         # call videoloop without setting player state to playing so it will only run once
-        self.root.after(1, self.video_loop)
+        self.after(1, self.video_loop)
 
     def enable_frame_by_frame(self):
         # enable frame-by-frame buttons
@@ -160,7 +161,7 @@ class Application:
     def destructor(self):
         # destroy everything and exit
         print("[INFO] closing...")
-        self.root.destroy()
+        self.destroy()
         self.video_source.release()  # release web camera
         cv2.destroyAllWindows()  # it is not mandatory in this application
 
@@ -171,4 +172,4 @@ class Application:
 print("[INFO] starting...")
 videosource = VideoSource('testfiles/test1.mp4')
 app = Application(videosource)
-app.root.mainloop()
+app.mainloop()
