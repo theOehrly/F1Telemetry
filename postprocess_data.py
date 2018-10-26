@@ -242,7 +242,8 @@ bridge_error_segments(speed_tmp, speed_error_segments)
 # again search for points of change; as error segments were removed this now only yields real points of change
 # additionaly min_decel is set, this prevents lift and cost from being mistaken for the start of braking
 speed_seg_points = get_points_of_change(speed_deriv, min_decel=-7)
-# add the very last point of data for sake of simplicity when iterating over points later on
+# add the first and last point of data for sake of simplicity when iterating over points later on
+speed_seg_points.insert(0, 0)
 speed_seg_points.append(len(speed_tmp))
 
 
@@ -280,5 +281,3 @@ with open('results/smooth_speed.csv', 'w') as csvfile:
     for value in speed_smooth:
         csvfile.write(str(value) + '\n')
     csvfile.close()
-
-# TODO loosing segments
