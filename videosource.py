@@ -15,9 +15,9 @@ class VideoSource:
         self.total_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
         self.duration = self.total_frames / self.source_fps  # video duration
 
-        self.reverse_once = False  # if set next_frame returns previous frame once
+        self.reverse_once = False  # if set next__video_frame returns previous frame once
 
-    def next_frame(self):
+    def next__video_frame(self):
         # returns next frame depending on playback direction
         if self.playback_direction == -1 or self.reverse_once:
             # return previous frame
@@ -42,6 +42,9 @@ class VideoSource:
 
         else:
             return None
+
+    def next_raw_frame(self):
+        return self.capture.read()
 
     def seek_to(self, frame):
         time_position_new = frame * 1000 / self.source_fps

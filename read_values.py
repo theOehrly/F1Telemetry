@@ -3,7 +3,6 @@ import pytesseract
 import threading
 
 import cv2
-import sys
 
 
 # some information:
@@ -235,17 +234,17 @@ def create_label_masks(img):
 # -l Formula1: use special training data for F1 font
 # -c tessedit_char_whitelist=0123456789 : only allow numbers
 
-def do_ocr_speed(img, data, index):
-    ocr_speed_roi = img[int(0.75*roi_image_size):int(0.95*roi_image_size),
-                        int(0.3*roi_image_size):int(0.7*roi_image_size)]
+def do_ocr_speed(img, data, index, size):
+    ocr_speed_roi = img[int(0.75*size):int(0.95*size),
+                        int(0.3*size):int(0.7*size)]
     value = pytesseract.image_to_string(ocr_speed_roi,
                                         config='--psm 8 -c tessedit_char_whitelist=0123456789')
     data[index] = value
 
 
-def do_ocr_rpm(img, data, index):
-    ocr_rpm_roi = img[int(0.6*roi_image_size):int(0.7*roi_image_size),
-                      int(0.3*roi_image_size):int(0.7*roi_image_size)]
+def do_ocr_rpm(img, data, index, size):
+    ocr_rpm_roi = img[int(0.6*size):int(0.7*size),
+                      int(0.3*size):int(0.7*size)]
 
     value = pytesseract.image_to_string(ocr_rpm_roi,
                                         config='--psm 8 -c tessedit_char_whitelist=0123456789')
@@ -258,77 +257,73 @@ def do_ocr_rpm(img, data, index):
     data[index] = value
 
 
-def do_ocr_gear(img, data, index):
-    ocr_gear_roi = img[int(0.35*roi_image_size):int(0.57*roi_image_size),
-                       int(0.4*roi_image_size):int(0.6*roi_image_size)]
+def do_ocr_gear(img, data, index, size):
+    ocr_gear_roi = img[int(0.35*size):int(0.57*size),
+                       int(0.4*size):int(0.6*size)]
     value = pytesseract.image_to_string(ocr_gear_roi,
                                         config='--psm 10 -c tessedit_char_whitelist=0123456789')
     data[index] = value
 
 
-# if not select_roi(base_image):
-#     sys.exit()
+def do_regocgnition(source, timing_data):
+    source.seek_to(timing_data[1]-1)  # seek to first frame which is to be processed
+    timecode_offset = timing_data[0] * (1000 / source.source_fps)  # set timecode for first frame
 
-# create roi image
+    # if not select_roi(base_image):
+    #     sys.exit()
 
-x1 = selection[0] - selection[2]
-x2 = selection[0] + selection[2]
-y1 = selection[1] - selection[2]
-y2 = selection[1] + selection[2]
-roi_image_size = selection[2] * 2  # roi image is always a square so x = y in terms of size
+    # create roi image
 
-# roi_img = base_image[y1:y2, x1:x2]
+    x1 = selection[0] - selection[2]
+    x2 = selection[0] + selection[2]
+    y1 = selection[1] - selection[2]
+    y2 = selection[1] + selection[2]
+    roi_image_size = selection[2] * 2  # roi image is always a square so x = y in terms of size
 
-cap = cv2.VideoCapture(video)
+    # roi_img = base_image[y1:y2, x1:x2]
 
-for i in range(300):
-    ret, frame = cap.read()
-    # print(i)
+    csv_file = open('results/out.csv', "w")
 
-csv_file = open('results/out.csv', "w")
+    while source.capture.get(cv2.CAP_PROP_POS_FRAMES) <= timing_data[2]:
+        ret, frame = source.next_raw_frame()
 
-frame_number = 0
+        if ret:
+            roi_img = frame[y1:y2, x1:x2]
 
-while True:
-    ret, frame = cap.read()
+            label_subtraction_mask, label_ocr_mask = create_label_masks(roi_img)
 
-    if ret:
-        roi_img = frame[y1:y2, x1:x2]
+            # do recognition threaded
+            ocr_values = [0, 0, 0, 0, 0]
+            t1 = threading.Thread(target=do_ocr_speed, args=[label_ocr_mask, ocr_values, 0, roi_image_size])
+            t2 = threading.Thread(target=do_ocr_rpm, args=[label_ocr_mask, ocr_values, 1, roi_image_size])
+            t3 = threading.Thread(target=do_ocr_gear, args=[label_ocr_mask, ocr_values, 2, roi_image_size])
+            t4 = threading.Thread(target=read_brake, args=[roi_img, roi_image_size, ocr_values, 3])
+            t5 = threading.Thread(target=read_throttle,
+                                  args=[roi_img, roi_image_size, label_subtraction_mask, ocr_values, 4])
+            t1.start()
+            t2.start()
+            t3.start()
+            t4.start()
+            t5.start()
+            t1.join()
+            t2.join()
+            t3.join()
+            t4.join()
+            t5.join()
 
-        label_subtraction_mask, label_ocr_mask = create_label_masks(roi_img)
+            # print(ocr_values)
 
-        # do recognition threaded
-        ocr_values = [0, 0, 0, 0, 0]
-        t1 = threading.Thread(target=do_ocr_speed, args=[label_ocr_mask, ocr_values, 0])
-        t2 = threading.Thread(target=do_ocr_rpm, args=[label_ocr_mask, ocr_values, 1])
-        t3 = threading.Thread(target=do_ocr_gear, args=[label_ocr_mask, ocr_values, 2])
-        t4 = threading.Thread(target=read_brake, args=[roi_img, roi_image_size, ocr_values, 3])
-        t5 = threading.Thread(target=read_throttle,
-                              args=[roi_img, roi_image_size, label_subtraction_mask, ocr_values, 4])
-        t1.start()
-        t2.start()
-        t3.start()
-        t4.start()
-        t5.start()
-        t1.join()
-        t2.join()
-        t3.join()
-        t4.join()
-        t5.join()
+            # convert data to str for writing to file
+            for i in range(len(ocr_values)):
+                ocr_values[i] = str(ocr_values[i])
 
-        # print(ocr_values)
+            timecode = (source.capture.get(cv2.CAP_PROP_POS_MSEC) - timecode_offset) / 1000
+            csv_file.write('; '.join(ocr_values) + '; ' + str(timecode) + '\n')
 
-        # convert data to str for writing to file
-        for i in range(len(ocr_values)):
-            ocr_values[i] = str(ocr_values[i])
+            print(timecode)
 
-        csv_file.write('; '.join(ocr_values) + '; ' + str(frame_number) + '\n')
+        else:
+            break
 
-        frame_number += 1
-        print(frame_number)
-
-    else:
-        break
-
-cv2.destroyAllWindows()
-csv_file.close()
+    cv2.destroyAllWindows()
+    csv_file.close()
