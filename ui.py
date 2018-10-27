@@ -235,7 +235,6 @@ class Application(tk.Tk):
         # destroy everything and exit
         print("[INFO] closing...")
         self.destroy()
-        self.video_source.release()  # release web camera
         cv2.destroyAllWindows()  # it is not mandatory in this application
 
 
@@ -247,5 +246,6 @@ videosource = VideoSource('testfiles/test1.mp4')
 t_data = [0, 0, 0]
 app = Application(videosource, t_data)
 app.mainloop()
+videosource.release()  # release web camera
 
 print(t_data)
