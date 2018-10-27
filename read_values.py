@@ -265,7 +265,7 @@ def do_ocr_gear(img, data, index, size):
     data[index] = value
 
 
-def do_regocgnition(source, timing_data):
+def do_regocgnition(source, timing_data, outfile):
     source.seek_to(timing_data[1]-1)  # seek to first frame which is to be processed
     timecode_offset = timing_data[0] * (1000 / source.source_fps)  # set timecode for first frame
 
@@ -282,7 +282,7 @@ def do_regocgnition(source, timing_data):
 
     # roi_img = base_image[y1:y2, x1:x2]
 
-    csv_file = open('results/out.csv', "w")
+    csv_file = open(outfile, "w")
 
     while source.capture.get(cv2.CAP_PROP_POS_FRAMES) <= timing_data[2]:
         ret, frame = source.next_raw_frame()
