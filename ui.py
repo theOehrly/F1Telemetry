@@ -130,7 +130,7 @@ class Application(tk.Tk):
 
     def seek_to(self, event):
         self.playing = False
-        self.video_source.frame_by_frame = True
+        self.enable_frame_by_frame()
         # self.after(1, self.continue_seek)
         # self.video_source.no_delay = True  # deliver frames without delay when seeking
 
@@ -139,7 +139,7 @@ class Application(tk.Tk):
         self.video_loop()
 
     def end_seek(self, event):
-        self.video_source.frame_by_frame = False
+        self.disable_frame_by_frame()
 
         self.playing = True
         self.after(1, self.video_loop)
