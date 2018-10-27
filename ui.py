@@ -62,11 +62,14 @@ class VideoSource:
 
 
 class Application(tk.Tk):
-    def __init__(self, video_source):
+    def __init__(self, video_source, timing_data):
         super(Application, self).__init__()
-        self.video_source = video_source  # videosource class provides advanced playback options
 
+        self.video_source = video_source  # videosource class provides advanced playback options
         self.playing = True  # set player state
+
+        self.timing_data = timing_data
+        self.timing_data[2] = self.video_source.total_frames  # set end time to total frames for now
 
         self.title("F1 Video Telemetry ")  # set window title
         # self.destructor function gets fired when the window is closed
@@ -83,8 +86,8 @@ class Application(tk.Tk):
         self.bar_playback = ttk.Progressbar(self.top_row, orient="horizontal", mode="determinate", length=1000)
         self.bar_playback['maximum'] = self.video_source.duration
         self.top_row.add(self.bar_playback)
-        self.label_end_time = tk.Label(text=str(self.video_source.duration)+'s', padx=10, width=10)
-        self.top_row.add(self.label_end_time)
+        self.label_duration = tk.Label(text=str(self.video_source.duration)+'s', padx=10, width=10)
+        self.top_row.add(self.label_duration)
 
         # add buttons for playback control
         # show previous frame
@@ -101,6 +104,29 @@ class Application(tk.Tk):
                                      from_=-5, to=5, resolution=0.1, length=300)
         self.slider_speed.set(1.0)  # set slider to 1.0
         self.slider_speed.pack(padx=10, pady=10, side=tk.LEFT)
+
+        # explanation of following three timing control buttons:
+        # image recognition later will be done from start time to end time
+        # timing will be referenced to zero position, meaning start time is not necessarily zero in data
+        # add button/label for selecting end time
+        self.label_end_time = tk.Label(self, padx=10, width=10,
+                                       text='{}f / {}s'.format(round(self.timing_data[2]), self.video_source.duration))
+        self.label_end_time.pack(side=tk.RIGHT)
+        self.btn_end_time = tk.Button(self, text='Mark End', padx=10, width=10, state=tk.DISABLED,
+                                      command=self.set_end_time)
+        self.btn_end_time.pack(side=tk.RIGHT)
+        # add button/label for selecting zero time position
+        self.label_zero_time = tk.Label(self, padx=10, width=10, text='0f / 0s')
+        self.label_zero_time.pack(side=tk.RIGHT)
+        self.btn_zero_time = tk.Button(self, text='Mark Zero', padx=10, width=10, state=tk.DISABLED,
+                                       command=self.set_zero_time)
+        self.btn_zero_time.pack(side=tk.RIGHT)
+        # add button/label for selecting start time
+        self.label_start_time = tk.Label(self, padx=10, width=10, text='0f / 0s')
+        self.label_start_time.pack(side=tk.RIGHT)
+        self.btn_start_time = tk.Button(self, text='Mark Start', padx=10, width=10, state=tk.DISABLED,
+                                        command=self.set_start_time)
+        self.btn_start_time.pack(side=tk.RIGHT)
 
         # start a self.video_loop that constantly updates the displayed image
         # for the most recently read frame
@@ -164,19 +190,46 @@ class Application(tk.Tk):
         self.after(1, self.video_loop)
 
     def enable_frame_by_frame(self):
-        # enable frame-by-frame buttons
+        # enable frame-by-frame buttons and timing control buttons
         self.btn_prev_frame['state'] = tk.NORMAL
         self.btn_next_frame['state'] = tk.NORMAL
+        self.btn_start_time['state'] = tk.NORMAL
+        self.btn_end_time['state'] = tk.NORMAL
+        self.btn_zero_time['state'] = tk.NORMAL
 
         self.video_source.frame_by_frame = False
 
     def disable_frame_by_frame(self):
-        # disable frame - by - frame buttons
+        # disable frame-by-frame and timing control buttons
         self.btn_prev_frame['state'] = tk.DISABLED
         self.btn_next_frame['state'] = tk.DISABLED
+        self.btn_start_time['state'] = tk.DISABLED
+        self.btn_end_time['state'] = tk.DISABLED
+        self.btn_zero_time['state'] = tk.DISABLED
 
         self.video_source.frame_by_frame = False
         self.video_source.playback_direction = self.bar_playback['value']
+
+    def set_start_time(self):
+        # set start time for image recognition
+        current_frame = self.video_source.capture.get(cv2.CAP_PROP_POS_FRAMES)
+        self.timing_data[1] = current_frame
+        self.label_start_time['text'] = '{}f / {}s'.format(current_frame,
+                                                           current_frame * self.video_source.frame_duration / 1000)
+
+    def set_end_time(self):
+        # set end time for video recognition
+        current_frame = self.video_source.capture.get(cv2.CAP_PROP_POS_FRAMES)
+        self.timing_data[2] = current_frame
+        self.label_end_time['text'] = '{}f / {}s'.format(current_frame,
+                                                         current_frame * self.video_source.frame_duration / 1000)
+
+    def set_zero_time(self):
+        # set zero time for video recognition
+        current_frame = self.video_source.capture.get(cv2.CAP_PROP_POS_FRAMES)
+        self.timing_data[0] = current_frame
+        self.label_zero_time['text'] = '{}f / {}s'.format(current_frame,
+                                                          current_frame * self.video_source.frame_duration / 1000)
 
     def destructor(self):
         # destroy everything and exit
@@ -191,5 +244,8 @@ class Application(tk.Tk):
 # start the app
 print("[INFO] starting...")
 videosource = VideoSource('testfiles/test1.mp4')
-app = Application(videosource)
+t_data = [0, 0, 0]
+app = Application(videosource, t_data)
 app.mainloop()
+
+print(t_data)
