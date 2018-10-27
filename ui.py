@@ -16,7 +16,7 @@ class VideoSource:
 
         self.current_frame = None
         self.playback_direction = 1  # either 1 or -1
-        self.frame_by_frame = False  # if true, frames are returned without
+        self.frame_by_frame = False  # if true, frames are returned without delay
         self.source_fps = self.capture.get(cv2.CAP_PROP_FPS)  # video fps
         self.frame_duration = int(1000 / self.source_fps)  # duration of one frame
         self.total_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -40,7 +40,8 @@ class VideoSource:
         ok, frame = self.capture.read()  # read frame from video stream
         # frame = cv2.resize(frame, (1500,1000))
         if ok:  # frame captured without any errors
-            cv2.waitKey(self.frame_duration)
+            if not self.frame_by_frame:
+                cv2.waitKey(self.frame_duration)
             cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)  # convert colors from BGR to RGBA
             self.current_frame = Image.fromarray(cv2image)  # convert image for PIL
             # self.current_image= self.current_image.resize([1280,1024],PIL.Image.ANTIALIAS)
@@ -48,6 +49,10 @@ class VideoSource:
 
         else:
             return None
+
+    def seek_to(self, frame):
+        time_position_new = frame * 1000 / self.source_fps
+        self.capture.set(cv2.CAP_PROP_POS_MSEC, time_position_new)
 
     def change_playback_speed(self, factor):
         if factor > 0:
@@ -83,9 +88,11 @@ class Application(tk.Tk):
         self.top_row.pack(side=tk.TOP)
         self.label_time_code = tk.Label(text='0f/ 0s', padx=10, width=10)
         self.top_row.add(self.label_time_code)
-        self.bar_playback = ttk.Progressbar(self.top_row, orient="horizontal", mode="determinate", length=1000)
-        self.bar_playback['maximum'] = self.video_source.duration
-        self.top_row.add(self.bar_playback)
+        self.slider_playback = tk.Scale(self, orient='horizontal', from_=0, to=self.video_source.total_frames,
+                                        resolution=1, length=1000, showvalue=False)
+        self.top_row.add(self.slider_playback)
+        self.slider_playback.bind('<B1-Motion>', self.seek_to)  # call when slider is beeing dragged
+        self.slider_playback.bind('<ButtonRelease-1>', self.end_seek)  # resume playback when slider released
         self.label_duration = tk.Label(text=str(self.video_source.duration)+'s', padx=10, width=10)
         self.top_row.add(self.label_duration)
 
@@ -109,8 +116,8 @@ class Application(tk.Tk):
         # image recognition later will be done from start time to end time
         # timing will be referenced to zero position, meaning start time is not necessarily zero in data
         # add button/label for selecting end time
-        self.label_end_time = tk.Label(self, padx=10, width=10,
-                                       text='{}f / {}s'.format(round(self.timing_data[2]), self.video_source.duration))
+        self.label_end_time = tk.Label(self, padx=10, width=10, text='{}f / {}s'.format(round(self.timing_data[2]),
+                                                                                        self.video_source.total_frames))
         self.label_end_time.pack(side=tk.RIGHT)
         self.btn_end_time = tk.Button(self, text='Mark End', padx=10, width=10, state=tk.DISABLED,
                                       command=self.set_end_time)
@@ -144,7 +151,7 @@ class Application(tk.Tk):
             time_code = self.video_source.capture.get(cv2.CAP_PROP_POS_MSEC) / 1000
             frame = int(self.video_source.capture.get(cv2.CAP_PROP_POS_FRAMES))
             self.label_time_code['text'] = str(frame) + ' / ' + "{0:.2f}".format(time_code) + 's'
-            self.bar_playback['value'] = time_code
+            self.slider_playback.set(frame)
 
         if self.playing:
             self.after(1, self.video_loop)  # call the same function again
@@ -178,6 +185,22 @@ class Application(tk.Tk):
         else:
             self.video_source.change_playback_speed(factor)
 
+    def seek_to(self, event):
+        self.playing = False
+        self.video_source.frame_by_frame = True
+        # self.after(1, self.continue_seek)
+        # self.video_source.no_delay = True  # deliver frames without delay when seeking
+
+        frame = self.slider_playback.get()
+        self.video_source.seek_to(frame-1)
+        self.video_loop()
+
+    def end_seek(self, event):
+        self.video_source.frame_by_frame = False
+
+        self.playing = True
+        self.after(1, self.video_loop)
+
     def prev_frame(self):
         # set flag in video source telling it that the next requested frame will be previous one
         self.video_source.playback_direction = -1
@@ -208,7 +231,7 @@ class Application(tk.Tk):
         self.btn_zero_time['state'] = tk.DISABLED
 
         self.video_source.frame_by_frame = False
-        self.video_source.playback_direction = self.bar_playback['value']
+        self.video_source.playback_direction = self.slider_speed.get()
 
     def set_start_time(self):
         # set start time for image recognition
