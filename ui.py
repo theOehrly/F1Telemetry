@@ -6,7 +6,6 @@
 from PIL import Image, ImageTk
 import tkinter as tk
 import cv2
-from videosource import VideoSource
 
 
 class Application(tk.Tk):
@@ -201,16 +200,3 @@ class Application(tk.Tk):
         # destroy everything and exit
         print("[INFO] closing...")
         self.destroy()
-
-
-# construct the argument parse and parse the arguments
-
-# start the app
-print("[INFO] starting...")
-videosource = VideoSource('testfiles/test1.mp4')
-t_data = [0, 0, 0]
-app = Application(videosource, t_data)
-app.mainloop()
-videosource.release()  # release web camera
-
-print(t_data)
