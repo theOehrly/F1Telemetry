@@ -1,7 +1,7 @@
 import numpy as np
 import pytesseract
 import threading
-
+import sys
 import cv2
 
 
@@ -26,10 +26,7 @@ BAR_INNER_CIRCLE_FACTOR = 0.311
 # ################ #
 
 # selected part of the image; default values
-selection = [162, 359, 82]  # x, y, radius
-
-base_image = cv2.imread('testfiles/test5.png', 1)  # input image
-video = 'testfiles/test1.mp4'
+selection = [81, 359, 42]  # x, y, radius
 
 
 def set_x_selection(val):
@@ -236,9 +233,19 @@ def create_label_masks(img):
 
 def do_ocr_speed(img, data, index, size):
     ocr_speed_roi = img[int(0.75*size):int(0.95*size),
-                        int(0.3*size):int(0.7*size)]
+                        int(0.32*size):int(0.68*size)]
+    # ocr_speed_roi = cv2.blur(ocr_speed_roi, (2, 2))
+    ocr_speed_roi = cv2.resize(ocr_speed_roi, (50, 22), cv2.INTER_CUBIC)
+    # fname = 'learn/img{}.png'.format(index)
+    #
+    # cv2.imwrite(fname, ocr_speed_roi)
+    #
+    # cv2.imshow('test', ocr_speed_roi)
+    # cv2.waitKey(0)
     value = pytesseract.image_to_string(ocr_speed_roi,
-                                        config='--psm 8 -c tessedit_char_whitelist=0123456789')
+                                        config='--psm 8 -l f1a -c tessedit_char_whitelist=0123456789')
+    value = value.replace(' ', '')
+    print(value)
     data[index] = value
 
 
@@ -265,12 +272,13 @@ def do_ocr_gear(img, data, index, size):
     data[index] = value
 
 
-def do_regocgnition(source, timing_data, outfile):
+def do_regocgnition(source, timing_data, outfile, uid):
     source.seek_to(timing_data[1]-1)  # seek to first frame which is to be processed
     timecode_offset = timing_data[0] * (1000 / source.source_fps)  # set timecode for first frame
 
-    # if not select_roi(base_image):
-    #     sys.exit()
+    ret, frame = source.next_raw_frame()
+    if not select_roi(frame):
+        sys.exit()
 
     # create roi image
 
@@ -283,7 +291,13 @@ def do_regocgnition(source, timing_data, outfile):
     # roi_img = base_image[y1:y2, x1:x2]
 
     csv_file = open(outfile, "w")
+    # write headers
+    headers = ['speed', 'rpm', 'gear', 'brake', 'throttle', 'time']
+    for i in range(len(headers)):
+        headers[i] = headers[i] + '_' + uid
+    csv_file.write('; '.join(headers) + '\n')
 
+    source.seek_to(timing_data[1] - 1)  # seek to first frame which is to be processed
     while source.capture.get(cv2.CAP_PROP_POS_FRAMES) <= timing_data[2]:
         ret, frame = source.next_raw_frame()
 
@@ -294,22 +308,24 @@ def do_regocgnition(source, timing_data, outfile):
 
             # do recognition threaded
             ocr_values = [0, 0, 0, 0, 0]
-            t1 = threading.Thread(target=do_ocr_speed, args=[label_ocr_mask, ocr_values, 0, roi_image_size])
-            t2 = threading.Thread(target=do_ocr_rpm, args=[label_ocr_mask, ocr_values, 1, roi_image_size])
-            t3 = threading.Thread(target=do_ocr_gear, args=[label_ocr_mask, ocr_values, 2, roi_image_size])
-            t4 = threading.Thread(target=read_brake, args=[roi_img, roi_image_size, ocr_values, 3])
-            t5 = threading.Thread(target=read_throttle,
-                                  args=[roi_img, roi_image_size, label_subtraction_mask, ocr_values, 4])
-            t1.start()
-            t2.start()
-            t3.start()
-            t4.start()
-            t5.start()
-            t1.join()
-            t2.join()
-            t3.join()
-            t4.join()
-            t5.join()
+            # t1 = threading.Thread(target=do_ocr_speed, args=[label_ocr_mask, ocr_values, 0, roi_image_size])
+            # t2 = threading.Thread(target=do_ocr_rpm, args=[label_ocr_mask, ocr_values, 1, roi_image_size])
+            # t3 = threading.Thread(target=do_ocr_gear, args=[label_ocr_mask, ocr_values, 2, roi_image_size])
+            # t4 = threading.Thread(target=read_brake, args=[roi_img, roi_image_size, ocr_values, 3])
+            # t5 = threading.Thread(target=read_throttle,
+            #                       args=[roi_img, roi_image_size, label_subtraction_mask, ocr_values, 4])
+            # t1.start()
+            # t2.start()
+            # t3.start()
+            # t4.start()
+            # t5.start()
+            # t1.join()
+            # t2.join()
+            # t3.join()
+            # t4.join()
+            # t5.join()
+
+            do_ocr_speed(label_ocr_mask, ocr_values, 0, roi_image_size)
 
             # print(ocr_values)
 
