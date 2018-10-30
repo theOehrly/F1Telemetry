@@ -31,13 +31,14 @@ class VideoSource:
                 return None
 
         ok, frame = self.capture.read()  # read frame from video stream
-        # frame = cv2.resize(frame, (1500,1000))
+        frame = cv2.resize(frame, (1280, 720), 0, 0, cv2.INTER_LINEAR)
+        # frame = cv2.pyrDown(frame, frame)
         if ok:  # frame captured without any errors
             if not self.frame_by_frame:
                 cv2.waitKey(self.frame_duration)
             cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)  # convert colors from BGR to RGBA
             self.current_frame = Image.fromarray(cv2image)  # convert image for PIL
-            # self.current_image= self.current_image.resize([1280,1024],PIL.Image.ANTIALIAS)
+            # self.current_frame = self.current_frame.resize([1280,1024],PIL.Image.ANTIALIAS)
             return self.current_frame
 
         else:
