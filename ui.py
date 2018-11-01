@@ -83,7 +83,7 @@ class Application(tk.Tk):
 
     def video_loop(self):
         # get frame from videosource and show it with tkinter
-        frame = self.video_source.next__video_frame()
+        frame = self.video_source.next_video_frame()
         if frame:  # frame captured without any errors
             imgtk = ImageTk.PhotoImage(image=frame)  # convert image for tkinter
             self.panel.imgtk = imgtk  # anchor imgtk so it does not be deleted by garbage-collector

@@ -15,9 +15,9 @@ class VideoSource:
         self.total_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
         self.duration = self.total_frames / self.source_fps  # video duration
 
-        self.reverse_once = False  # if set next__video_frame returns previous frame once
+        self.reverse_once = False  # if set next_video_frame returns previous frame once
 
-    def next__video_frame(self):
+    def next_video_frame(self):
         # returns next frame depending on playback direction
         if self.playback_direction == -1 or self.reverse_once:
             # return previous frame
