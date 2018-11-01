@@ -4,7 +4,6 @@
 from scipy.signal import savgol_filter
 import matplotlib.pyplot as plt
 import os
-import copy
 
 
 def strip_spaces(data):
