@@ -2,8 +2,9 @@
 # order in csv file: speed, rpm, gear, brake, throttle, frame
 
 from scipy.signal import savgol_filter
-import numpy
 import matplotlib.pyplot as plt
+import os
+import copy
 
 
 def strip_spaces(data):
@@ -15,10 +16,16 @@ def strip_spaces(data):
 
 
 def to_float(data):
-    # d: list
     # convert a list of strings to integers
     for i in range(len(data)):
         data[i] = float(data[i])
+    return data
+
+
+def to_string(data):
+    # convert a list of values to strings
+    for i in range(len(data)):
+        data[i] = str(data[i])
     return data
 
 
@@ -46,7 +53,23 @@ def sign(a):
         return 0
 
 
-def get_points_of_change(data, min_decel=-1):
+def find_spikes(data, pos_max=15, neg_max=-40):
+    # check for changes in the derived data which are bigger than pos_max/neg_max
+    error_seg = list()
+    for i in range(len(data)):
+        if data[i] > pos_max or data[i] < neg_max:
+            i_start = i
+            data_tmp = 0
+            while data_tmp == 0:
+                i += 1
+                data_tmp = data[i]
+            i_end = i
+            error_seg.append([i_start, i_end])
+
+    return error_seg
+
+
+def get_points_of_change(data, min_neg_change=-1):
     # searches for points where the sign of data changes
     # min_decel can be set so that a simple switch from psotive to negative is not enough
     #   but the value needs to be at least as small as min_decel (useful for filtering lift and cost)
@@ -56,7 +79,7 @@ def get_points_of_change(data, min_decel=-1):
     for i in range(len(data)):
         current_sign = sign(data[i])
         if current_sign != previous_sign and current_sign != 0:
-            if 0 > data[i] > min_decel:
+            if 0 > data[i] > min_neg_change:
                 continue
 
             points_of_change.append(i)
@@ -143,7 +166,7 @@ def userinput_filter_points_of_change(data, points_o_c, i):
     return response.response
 
 
-def filter_points_of_change(points_o_c, data, min_sector=5):
+def filter_points_of_change(points_o_c, data_speed, data_deriv, min_sector=5):
     # filters a list of points of change
     # if to points in this list are closer together than min_sector, those points are dismissed
     # function returns a list of relevant points and a list with pairs of error points
@@ -164,13 +187,14 @@ def filter_points_of_change(points_o_c, data, min_sector=5):
         else:
             # check wether another point of change still exist
             # then check whether the point and the one after that are further apart than min_sector
-            if len(points_o_c) > i+2 and points_o_c[i + 2] - points_o_c[i + 1] < min_sector:
+            if len(points_o_c) > i+2 and points_o_c[i + 2] - points_o_c[i + 1] < min_sector \
+                    and not (abs(data_deriv[points_o_c[i]]) < 5 or abs(data_deriv[points_o_c[i+1]]) < 5):
                 # we now have two sectors which are shorter than allowed following each other
-                # this can be caused by to following errors OR one error being close to a correct point
+                # this can be caused by two following errors OR one error being close to a correct point
                 # these two cases are very difficult to distinguish an can't be hnadled in software currently
                 # therefore the script plots the concerning region and ask for help
 
-                response = userinput_filter_points_of_change(data, points_o_c, i)
+                response = userinput_filter_points_of_change(data_speed, points_o_c, i)
 
                 if response == 1:
                     # delete first
@@ -212,72 +236,223 @@ def bridge_error_segments(data, error_segs):
     return data
 
 
-csv_in = open('results/out.csv', 'r')
-
-speed_raw = list()
-frames = list()
-
-for line in csv_in.readlines():
-    line = line.replace('\n', '')  # strip newline character
-    values = line.split('; ')
-    speed_raw.append(values[0])
-    frames.append(values[5])
+def interactive_spikes_by_change(data, pmax, nmax):
+    data_deriv = derive(data)
+    spikes = find_spikes(data_deriv, pmax, nmax)
+    bridge_error_segments(data, spikes)
 
 
-# process speed data
-# first strip space characters that may result from OCR
-speed_tmp = strip_spaces(speed_raw)
-# convert strings to float
-speed_tmp = to_float(speed_tmp)
-# calculate the rate of change from speed data
-speed_deriv = derive(speed_tmp)
-# get all points where a change from acceleration to deceleration or back occurs
-speed_points_of_change = get_points_of_change(speed_deriv)
-# filter out those segements where the change is shorter than min_sector
-# this is very likely a spike due to readout errors
-rel, speed_error_segments = filter_points_of_change(speed_points_of_change, speed_tmp, min_sector=10)
-# bridge over those error segemnts
-bridge_error_segments(speed_tmp, speed_error_segments)
-
-# again search for points of change; as error segments were removed this now only yields real points of change
-# additionaly min_decel is set, this prevents lift and cost from being mistaken for the start of braking
-speed_seg_points = get_points_of_change(speed_deriv, min_decel=-7)
-# add the first and last point of data for sake of simplicity when iterating over points later on
-speed_seg_points.insert(0, 0)
-speed_seg_points.append(len(speed_tmp))
+def interactive_spikes_by_length(data, min_length):
+    data_deriv = derive(data)
+    # get all points where a change from acceleration to deceleration or back occurs
+    points_of_change = get_points_of_change(data_deriv)
+    # filter out those segements where the change is shorter than min_sector
+    # this is very likely a spike due to readout errors
+    rel, error_segments = filter_points_of_change(points_of_change, data, data_deriv, min_sector=min_length)
+    # bridge over those error segemnts
+    bridge_error_segments(data, error_segments)
 
 
-# smooth the speed values using a Savitzky-Golay filter
-# only smooth from one segmentation point to the next and not the whole data
-# this way all the max and min values are kept as they are
-speed_smooth = list()
-# settings for filter
-window_length = 15
-polyorder = 2
+def interactive_smooth_full(data):
+    data_smooth = savgol_filter(data, 15, 2)
+    return data_smooth
 
-for n in range(1, len(speed_seg_points)):
-    current_point = speed_seg_points[n]
-    previous_point = speed_seg_points[n-1]
-    if current_point - previous_point >= window_length:
-        speed_smooth.extend(savgol_filter(speed_tmp[previous_point:current_point], window_length, polyorder))
-    else:
-        # the segment to be smoothed is shorter than the filter settings allow
-        # therefore we need to adapt those settings (only for the current segment)
-        # first: set window length to the largest odd number that is smaller than our segment length
-        length = current_point - previous_point
-        if length % 2 == 0:
-            length -= 1
-        wl = length
-        # second: make sure polyorder is smaller than window length
-        if wl < polyorder:
-            pl = wl - 1
+
+def interactive_smooth_segmented(data, min_neg_change):
+    # calculate rate of change from data
+    data_deriv = derive(data)
+    # search for points of change
+    # min_neg_change can be set, so that only negative changes greater than it are considered important
+    speed_seg_points = get_points_of_change(data_deriv, min_neg_change=min_neg_change)
+    # add the first and last point of data for sake of simplicity when iterating over points later on
+    speed_seg_points.insert(0, 0)
+    speed_seg_points.append(len(data))
+
+    # smooth the values using a Savitzky-Golay filter
+    # only smooth from one segmentation point to the next and not the whole data
+    # this way all the max and min values are kept as they are
+    data_smooth = list()
+    # settings for filter
+    window_length = 15
+    polyorder = 2
+
+    for n in range(1, len(speed_seg_points)):
+        current_point = speed_seg_points[n]
+        previous_point = speed_seg_points[n-1]
+        if current_point - previous_point >= window_length:
+            data_smooth.extend(savgol_filter(data[previous_point:current_point], window_length, polyorder))
         else:
-            pl = polyorder
-        # smooth current semgent with determined setting
-        speed_smooth.extend(savgol_filter(speed_tmp[previous_point:current_point], wl, pl))
+            # the segment to be smoothed is shorter than the filter settings allow
+            # therefore we need to adapt those settings (only for the current segment)
+            # first: set window length to the largest odd number that is smaller than our segment length
+            length = current_point - previous_point
+            if length % 2 == 0:
+                length -= 1
+            wl = length
+            # second: make sure polyorder is smaller than window length
+            if wl < polyorder:
+                pl = wl - 1
+            else:
+                pl = polyorder
+            # smooth current semgent with determined setting
+            data_smooth.extend(savgol_filter(data[previous_point:current_point], wl, pl))
+
+    return data_smooth
 
 
-with open('results/smooth_speed.csv', 'w') as csvfile:
-    for value in speed_smooth:
-        csvfile.write(str(value) + '\n')
-    csvfile.close()
+def read_file(path):
+    csv_in = open(path, 'r')
+
+    data = [[], [], [], [], [], []]
+
+    for line in csv_in.readlines():
+        line = line.replace('\n', '')  # strip newline character
+        values = line.split('; ')
+        for i in range(len(data)):
+            data[i].append(values[i])
+
+    header = []
+    # extract every first item from data as these are the headers
+    for i in range(len(data)):
+        header.append(data[i].pop(0))
+
+    return data, header
+
+
+def write_file(data, header, path):
+    with open(path, 'w') as csvfile:
+        csvfile.write('; '.join(header) + '\n')
+        for n in range(len(data[0])):
+            d = []
+            for i in range(len(data)):
+                d.append(data[i][n])
+            csvfile.write('; '.join(to_string(d)) + '\n')
+        csvfile.close()
+
+
+def interactive_mode():
+    # allows to interactively postprocess data
+    # every time the data is modified the changes are immediately written to the file so they can be
+    # visualized in an external software
+    # a undo command is available so different ways of postprocessing can easily be tried out
+    # the script creates a backup of the original file wich is named filename_original.csv
+    # at some point this should be replaced with a gui interface
+
+    # promt user for filepath
+    path = ''
+    while not os.path.isfile(path):
+        print('\nEnter path to file: ')
+        path = str(input())
+
+    data, header = read_file(path)
+
+    # create backup file; append _original to the filename
+    index_file_type = path.rfind('.')
+    path_file_copy = path[:index_file_type] + '_original' + path[index_file_type:]
+    write_file(data, header, path_file_copy)
+
+    # convert all data to float and strip out space characters if any
+    for i in range(len(data)):
+        data[i] = to_float(strip_spaces(data[i]))
+
+    # start of the interactive part
+    command = None
+    selection = None
+    previous = []
+
+    info = """
+    Interactive Tool for postprocessing data.
+    After selecting an option changes are immediately written to file
+    so they can be visualized in a different program.
+    
+    Available Commands:
+    \tselect \t\t\t|\tSelect which data you want to manipulate
+    \tundo \t\t\t|\tUndo latest changes
+    \texit \t\t\t|\tExit program
+    \n\t\t1 posmax negmax |\tRemove spikes based on rate of change: posmax and negmax are the maximum amounts of change 
+    \t\t\t\t\t|\twhich are not considered a spike (negmax needs to be a negative number!)
+    \n\t\t2 min_length \t|\tRemove spikes based on length: 
+    \t\t\t\t\t|\tIf there are less datapoint than min_length between two points of 
+    \t\t\t\t\t|\tchange, that section is considered a spike
+    \n\t\t3 \t\t\t\t|\tSmooth data in one go: Runs a Savitzky-Golay filter over all of the data\n
+    \n\t\t4 min_neg_change|\tSmooth data in segments: Data is devided into segments, every segments starts at a local 
+    \t\t\t\t\t|\tmaximum or minimum and ends at the next maximum or minimum. This keeps the values of the maximum/minimum 
+    \t\t\t\t\t|\tunchanged when smoothing the data. A Savitzky-Golay filter is run over each segment.
+    """
+
+    # show the info so one knows what to do
+    print(info)
+
+    while command != 'exit':
+        if command == 'select' or selection is None:
+            # select dataset from csv which is to be modified
+            print('\n\n Select from data by index:')
+            for i in range(len(data)):
+                print('\t{} - {}'.format(i, header[i]))
+
+            while selection not in range(len(data)):
+                print('Enter Number: ')
+                try:
+                    selection = int(input())
+                except ValueError:
+                    continue
+
+            previous = []
+
+        elif command == 'undo':
+            # undo last changes
+            data[selection] = previous.pop(-1)
+
+        elif command == 'info':
+            print(info)
+
+        elif command[0] == '1':
+            print('\n Removing spikes: detection by rate of change')
+
+            # backup a copy of the current dataset in a list of all changes
+            previous.append(data[selection].copy())
+
+            options = command.split(' ')
+            if len(options) == 3:
+                interactive_spikes_by_change(data[selection], float(options[1]), float(options[2]))
+            else:
+                print('\n! invalid, syntax is: "1 posmax negmax" !')
+
+        elif command[0] == '2':
+            print('\n Removing spikes: detection by length')
+            previous.append(data[selection].copy())
+            options = command.split(' ')
+            if len(options) == 2:
+                interactive_spikes_by_length(data[selection], float(options[1]))
+            else:
+                print('\n! invalid: syntax is "2 min_length" !')
+
+        elif command == '3':
+            print('\n Smoothing data in one go')
+            previous.append(data[selection].copy())
+            data[selection] = interactive_smooth_full(data[selection])
+
+        elif command[0] == '4':
+            print('\n Smoothing data in segments')
+            previous.append(data[selection].copy())
+            options = command.split(' ')
+            if len(options) == 2:
+                data[selection] = interactive_smooth_segmented(data[selection], float(options[1]))
+            else:
+                print('\n! invalid: syntax is "4 min_neg_change" !')
+
+        else:
+            print('\n!! Invalid selection: Enter "info" to get availlable commands')
+
+        write_file(data, header, path)
+
+        print('\n Select an option: ')
+        command = str(input())
+
+    # when exiting write file again with modified headers
+    # this makes it easier to seperate the original and modified dataset in other software
+    for i in range(len(data)):
+        header[i] = header[i] + '_p'
+
+
+interactive_mode()
