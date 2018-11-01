@@ -1,6 +1,6 @@
 from videosource import VideoSource
 from ui import Application
-from read_values import do_regocgnition
+from recognition import do_regocgnition
 
 infile = 'results/mex_q2/ver_alo_q2.mp4'
 uid = 'alo_q2'
