@@ -10,12 +10,15 @@ videosource = VideoSource(infile)
 outfile = 'results/ver_q3_ref.csv'
 
 timing_data = [0, 0, 0]
+selection = [81, 359, 42]
 
-app = Application(videosource, timing_data)
+app = Application(videosource, timing_data, selection)
 
 print("[INFO] starting...")
 app.mainloop()
 
-# do_regocgnition(videosource, timing_data, outfile, uid)
+print(selection)
+
+# do_regocgnition(videosource, timing_data, selection, outfile, uid)
 
 videosource.release()  # release web camera

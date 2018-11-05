@@ -9,10 +9,10 @@ import cv2
 
 
 class Application(tk.Tk):
-    def __init__(self, video_source, timing_data):
+    def __init__(self, video_source, timing_data, selection):
         super(Application, self).__init__()
 
-        self.selection = [81, 359, 42]  # x, y, radius
+        self.selection = selection  # x, y, radius
         self.last_mouse_position = []
 
         self.video_source = video_source  # videosource class provides advanced playback options

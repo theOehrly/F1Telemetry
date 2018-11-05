@@ -25,50 +25,6 @@ BAR_INNER_CIRCLE_FACTOR = 0.311
 
 # ################ #
 
-# selected part of the image; default values
-selection = [81, 359, 42]  # x, y, radius
-
-
-def set_x_selection(val):
-    selection[0] = val
-
-
-def set_y_selection(val):
-    selection[1] = val
-
-
-def set_selection_size(val):
-    selection[2] = val
-
-
-def select_roi(img):
-    cv2.namedWindow('preview', cv2.WINDOW_AUTOSIZE)
-    cv2.namedWindow('controls', cv2.WINDOW_NORMAL)
-
-    # create trackbars for circle pos and size
-    cv2.createTrackbar('x', 'controls', 0, img.shape[1], set_x_selection)
-    cv2.createTrackbar('y', 'controls', 0, img.shape[1], set_y_selection)
-    cv2.createTrackbar('size', 'controls', 0, img.shape[0], set_selection_size)
-    cv2.imshow('controls', np.zeros((2, 2, 3), np.uint8))
-
-    while True:
-        prev_img = np.copy(img)
-        cv2.circle(prev_img, (selection[0], selection[1]), selection[2], (0, 0, 255), 1)  # outer circle
-        cv2.circle(prev_img, (selection[0], selection[1]), 3, (0, 0, 255), -1)  # center point
-
-        cv2.imshow('preview', prev_img)
-        key = cv2.waitKey(1)
-        if key == 27:
-            accept = False
-            break
-        elif key == 13:
-            accept = True
-            break
-
-    cv2.destroyAllWindows()
-
-    return accept
-
 
 def isolate_throttle_bar(img, size, mask2):
     # mask2 is the mask for label subtraction
@@ -272,16 +228,10 @@ def do_ocr_gear(img, data, index, size):
     data[index] = value
 
 
-def do_regocgnition(source, timing_data, outfile, uid):
-    source.seek_to(timing_data[1]-1)  # seek to first frame which is to be processed
+def do_regocgnition(source, timing_data, selection, outfile, uid):
     timecode_offset = timing_data[0] * (1000 / source.source_fps)  # set timecode for first frame
 
-    ret, frame = source.next_raw_frame()
-    if not select_roi(frame):
-        sys.exit()
-
     # create roi image
-
     x1 = selection[0] - selection[2]
     x2 = selection[0] + selection[2]
     y1 = selection[1] - selection[2]
