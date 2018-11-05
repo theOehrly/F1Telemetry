@@ -13,6 +13,7 @@ class Application(tk.Tk):
         super(Application, self).__init__()
 
         self.selection = [81, 359, 42]  # x, y, radius
+        self.last_mouse_position = []
 
         self.video_source = video_source  # videosource class provides advanced playback options
         self.playing = True  # set player state
@@ -24,6 +25,8 @@ class Application(tk.Tk):
         # self.destructor function gets fired when the window is closed
         self.protocol('WM_DELETE_WINDOW', self.destructor)
         self.panel = tk.Label(self)  # initialize image panel
+        self.panel.bind('<Button-1>', self.on_drag_start)
+        self.panel.bind('<B1-Motion>', self.on_drag)  # bind to dragging with left mouse buttton
         self.panel.pack(padx=10, pady=10, side=tk.TOP)
         self.config(cursor="arrow")
 
@@ -200,6 +203,17 @@ class Application(tk.Tk):
         self.timing_data[0] = current_frame
         self.label_zero_time['text'] = '{}f / {}s'.format(current_frame,
                                                           current_frame * self.video_source.frame_duration / 1000)
+
+    def on_drag_start(self, event):
+        self.last_mouse_position = [event.x, event.y]
+
+    def on_drag(self, event):
+        # check whether mouse is within selection circle
+        delta_x = event.x - self.last_mouse_position[0]
+        delta_y = event.y - self.last_mouse_position[1]
+        self.selection[0] += delta_x
+        self.selection[1] += delta_y
+        self.last_mouse_position = [event.x, event.y]
 
     def destructor(self):
         # destroy everything and exit
