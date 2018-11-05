@@ -35,7 +35,7 @@ class Application(tk.Tk):
         self.top_row.add(self.slider_playback)
         self.slider_playback.bind('<B1-Motion>', self.seek_to)  # call when slider is beeing dragged
         self.slider_playback.bind('<ButtonRelease-1>', self.end_seek)  # resume playback when slider released
-        self.label_duration = tk.Label(text=str(self.video_source.duration)+'s', padx=10, width=10)
+        self.label_duration = tk.Label(text=str(round(self.video_source.duration, 2))+'s', padx=10, width=10)
         self.top_row.add(self.label_duration)
 
         # add buttons for playback control
