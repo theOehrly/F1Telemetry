@@ -27,6 +27,7 @@ class Application(tk.Tk):
         self.panel = tk.Label(self)  # initialize image panel
         self.panel.bind('<Button-1>', self.on_drag_start)
         self.panel.bind('<B1-Motion>', self.on_drag)  # bind to dragging with left mouse buttton
+        self.panel.bind('<MouseWheel>', self.on_scroll)  # bind to scroll up and down
         self.panel.pack(padx=10, pady=10, side=tk.TOP)
         self.config(cursor="arrow")
 
@@ -214,6 +215,11 @@ class Application(tk.Tk):
         self.selection[0] += delta_x
         self.selection[1] += delta_y
         self.last_mouse_position = [event.x, event.y]
+
+    def on_scroll(self, event):
+        self.selection[2] = self.selection[2] - int(event.delta/100)
+        if self.selection[2] < 0:  # selection radius, may not be negative
+            self.selection[2] = 0
 
     def destructor(self):
         # destroy everything and exit
