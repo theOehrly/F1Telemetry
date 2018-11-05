@@ -12,6 +12,8 @@ class Application(tk.Tk):
     def __init__(self, video_source, timing_data):
         super(Application, self).__init__()
 
+        self.selection = [81, 359, 42]  # x, y, radius
+
         self.video_source = video_source  # videosource class provides advanced playback options
         self.playing = True  # set player state
 
@@ -84,8 +86,11 @@ class Application(tk.Tk):
     def video_loop(self):
         # get frame from videosource and show it with tkinter
         frame = self.video_source.next__video_frame()
-        if frame:  # frame captured without any errors
-            imgtk = ImageTk.PhotoImage(image=frame)  # convert image for tkinter
+        if frame is not None:  # frame captured without any errors
+            frame = cv2.circle(frame, (self.selection[0], self.selection[1]), self.selection[2], (255, 0, 0, 255), 1)  # outer circle
+            frame = cv2.circle(frame, (self.selection[0], self.selection[1]), 3, (255, 0, 0, 255), -1)  # center point
+            pil_frame = Image.fromarray(frame)  # convert image for PIL
+            imgtk = ImageTk.PhotoImage(image=pil_frame)  # convert image for tkinter
             self.panel.imgtk = imgtk  # anchor imgtk so it does not be deleted by garbage-collector
             self.panel.config(image=imgtk)  # show the image
 
