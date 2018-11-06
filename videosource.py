@@ -36,8 +36,7 @@ class VideoSource:
         if ok:  # frame captured without any errors
             if not self.frame_by_frame:
                 cv2.waitKey(self.frame_duration)
-            cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)  # convert colors from BGR to RGBA
-            self.current_frame = Image.fromarray(cv2image)  # convert image for PIL
+            self.current_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)  # convert colors from BGR to RGBA
             # self.current_frame = self.current_frame.resize([1280,1024],PIL.Image.ANTIALIAS)
             return self.current_frame
 

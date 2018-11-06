@@ -9,8 +9,11 @@ import cv2
 
 
 class Application(tk.Tk):
-    def __init__(self, video_source, timing_data):
+    def __init__(self, video_source, timing_data, selection):
         super(Application, self).__init__()
+
+        self.selection = selection  # x, y, radius
+        self.last_mouse_position = []
 
         self.video_source = video_source  # videosource class provides advanced playback options
         self.playing = True  # set player state
@@ -22,6 +25,9 @@ class Application(tk.Tk):
         # self.destructor function gets fired when the window is closed
         self.protocol('WM_DELETE_WINDOW', self.destructor)
         self.panel = tk.Label(self)  # initialize image panel
+        self.panel.bind('<Button-1>', self.on_drag_start)
+        self.panel.bind('<B1-Motion>', self.on_drag)  # bind to dragging with left mouse buttton
+        self.panel.bind('<MouseWheel>', self.on_scroll)  # bind to scroll up and down
         self.panel.pack(padx=10, pady=10, side=tk.TOP)
         self.config(cursor="arrow")
 
@@ -35,7 +41,7 @@ class Application(tk.Tk):
         self.top_row.add(self.slider_playback)
         self.slider_playback.bind('<B1-Motion>', self.seek_to)  # call when slider is beeing dragged
         self.slider_playback.bind('<ButtonRelease-1>', self.end_seek)  # resume playback when slider released
-        self.label_duration = tk.Label(text=str(self.video_source.duration)+'s', padx=10, width=10)
+        self.label_duration = tk.Label(text=str(round(self.video_source.duration, 2))+'s', padx=10, width=10)
         self.top_row.add(self.label_duration)
 
         # add buttons for playback control
@@ -84,8 +90,11 @@ class Application(tk.Tk):
     def video_loop(self):
         # get frame from videosource and show it with tkinter
         frame = self.video_source.next_video_frame()
-        if frame:  # frame captured without any errors
-            imgtk = ImageTk.PhotoImage(image=frame)  # convert image for tkinter
+        if frame is not None:  # frame captured without any errors
+            frame = cv2.circle(frame, (self.selection[0], self.selection[1]), self.selection[2], (255, 0, 0, 255), 1)  # outer circle
+            frame = cv2.circle(frame, (self.selection[0], self.selection[1]), 3, (255, 0, 0, 255), -1)  # center point
+            pil_frame = Image.fromarray(frame)  # convert image for PIL
+            imgtk = ImageTk.PhotoImage(image=pil_frame)  # convert image for tkinter
             self.panel.imgtk = imgtk  # anchor imgtk so it does not be deleted by garbage-collector
             self.panel.config(image=imgtk)  # show the image
 
@@ -195,6 +204,22 @@ class Application(tk.Tk):
         self.timing_data[0] = current_frame
         self.label_zero_time['text'] = '{}f / {}s'.format(current_frame,
                                                           current_frame * self.video_source.frame_duration / 1000)
+
+    def on_drag_start(self, event):
+        self.last_mouse_position = [event.x, event.y]
+
+    def on_drag(self, event):
+        # check whether mouse is within selection circle
+        delta_x = event.x - self.last_mouse_position[0]
+        delta_y = event.y - self.last_mouse_position[1]
+        self.selection[0] += delta_x
+        self.selection[1] += delta_y
+        self.last_mouse_position = [event.x, event.y]
+
+    def on_scroll(self, event):
+        self.selection[2] = self.selection[2] - int(event.delta/100)
+        if self.selection[2] < 0:  # selection radius, may not be negative
+            self.selection[2] = 0
 
     def destructor(self):
         # destroy everything and exit
