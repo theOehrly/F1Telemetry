@@ -199,7 +199,7 @@ def do_ocr_speed(img, data, index, size):
     # cv2.imshow('test', ocr_speed_roi)
     # cv2.waitKey(0)
     value = pytesseract.image_to_string(ocr_speed_roi,
-                                        config='--psm 8 -l f1a -c tessedit_char_whitelist=0123456789')
+                                        config='--psm 8 -l f1c -c tessedit_char_whitelist=0123456789')
     value = value.replace(' ', '')
     print(value)
     data[index] = value
