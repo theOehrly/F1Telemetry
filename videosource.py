@@ -1,5 +1,9 @@
 import cv2
-from PIL import Image
+import collections
+import threading
+
+# TODO reversing direction is not immediate
+# TODO threaded videoloading results in the playbackbar beeing jittery
 
 
 class VideoSource:
@@ -7,56 +11,92 @@ class VideoSource:
         self.source_file = videofile
         self.capture = cv2.VideoCapture(self.source_file)  # video source
 
-        self.current_frame = None
+        self.frame_buffer = collections.deque()
+        self.buffer_thread = None
+
         self.playback_direction = 1  # either 1 or -1
         self.frame_by_frame = False  # if true, frames are returned without delay
+        self.seek_target = None
+        self.reverse_once = False  # if set next_video_frame returns previous frame once
+
         self.source_fps = self.capture.get(cv2.CAP_PROP_FPS)  # video fps
-        self.frame_duration = int(1000 / self.source_fps)  # duration of one frame
+        self.source_frame_duration = int(1000 / self.source_fps)  # duration of one frame
+        self.playback_frame_duration = self.source_frame_duration  # can be different from source due to playbackspeed
+        self.frame_skip_factor = 1  # 1=every frame, 2=every 2nd frame, ...
+
         self.total_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
         self.duration = self.total_frames / self.source_fps  # video duration
 
-        self.reverse_once = False  # if set next_video_frame returns previous frame once
+        # prefill frame buffer
+        while len(self.frame_buffer) < 1:
+            self.top_up_buffer()
 
-    def next_video_frame(self):
-        # returns next frame depending on playback direction
-        if self.playback_direction == -1 or self.reverse_once:
-            # return previous frame
-            self.reverse_once = False  # reset always
-            time_position_is = self.capture.get(cv2.CAP_PROP_POS_MSEC)
-            if time_position_is >= 0:
+    def top_up_buffer(self):
+        self.set_position()
+        ok, frame = self.capture.read()
+        if ok:
+            self.frame_buffer.appendleft(cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA))
+
+    def get_frame(self):
+        if self.buffer_thread:
+            self.buffer_thread.join()
+        self.buffer_thread = threading.Thread(target=self.top_up_buffer)
+        self.buffer_thread.start()
+        # self.top_up_buffer()
+        if self.frame_buffer:
+            return self.frame_buffer.pop()
+
+    def set_position(self):
+        if self.seek_target:
+            # set new position
+            self.capture.set(cv2.CAP_PROP_POS_FRAMES, self.seek_target)
+
+            # clear buffer and refill as frames in it just got useless
+            self.frame_buffer.clear()
+            while len(self.frame_buffer) < 3:
+                ok, frame = self.capture.read()
+                if ok:
+                    self.frame_buffer.appendleft(cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA))
+
+            # reset seek target so we don't seek to it again
+            self.seek_target = None
+
+        if self.playback_direction == -1:
+            # play reverse
+            frame_position_is = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
+            if frame_position_is >= 0:
                 # set new timecode
-                time_position_new = time_position_is - 2 * (1000 / self.source_fps)
-                self.capture.set(cv2.CAP_PROP_POS_MSEC, time_position_new)
-            else:
-                return None
+                frame_position_new = frame_position_is - 2 - (self.frame_skip_factor - 1)
+                self.capture.set(cv2.CAP_PROP_POS_FRAMES, frame_position_new)
 
-        ok, frame = self.capture.read()  # read frame from video stream
-        frame = cv2.resize(frame, (1280, 720), 0, 0, cv2.INTER_LINEAR)
-        # frame = cv2.pyrDown(frame, frame)
-        if ok:  # frame captured without any errors
-            if not self.frame_by_frame:
-                cv2.waitKey(self.frame_duration)
-            self.current_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)  # convert colors from BGR to RGBA
-            # self.current_frame = self.current_frame.resize([1280,1024],PIL.Image.ANTIALIAS)
-            return self.current_frame
+        elif self.frame_skip_factor != 1:
+            # play forward but speed is greater than 2, so we skip some frames
+            frame_position_is = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
+            frame_position_new = frame_position_is + (self.frame_skip_factor - 1)
 
-        else:
-            return None
+            if frame_position_new <= self.total_frames:
+                self.capture.set(cv2.CAP_PROP_POS_FRAMES, frame_position_new)
 
     def next_raw_frame(self):
         return self.capture.read()
 
     def seek_to(self, frame):
-        time_position_new = frame * 1000 / self.source_fps
-        self.capture.set(cv2.CAP_PROP_POS_MSEC, time_position_new)
+        # self.seek_target = frame * 1000 / self.source_fps
+        self.seek_target = frame
 
-    def change_playback_speed(self, factor):
-        if factor > 0:
+    def change_playback_speed(self, speed):
+        if speed * self.playback_direction == -1:
+            # one is negative and one positive, meaning new direction not equal to old direction
+            self.frame_buffer.reverse()
+
+        if speed > 0:
             self.playback_direction = 1
-        elif factor < 0:
+        elif speed < 0:
             self.playback_direction = -1
 
-        self.frame_duration = int(1000 / (self.source_fps * abs(factor)))
+        self.frame_skip_factor = int(abs(speed)) if abs(speed) >= 1 else 1
+        # used to skip frames so that playback framerate stays within one to two times source fps
+        self.playback_frame_duration = int(1000 / (self.source_fps * abs(speed))) * self.frame_skip_factor
 
     def release(self):
         self.capture.release()

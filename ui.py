@@ -89,7 +89,9 @@ class Application(tk.Tk):
 
     def video_loop(self):
         # get frame from videosource and show it with tkinter
-        frame = self.video_source.next_video_frame()
+        # frame = self.video_source.next_video_frame()
+        cv2.waitKey(self.video_source.playback_frame_duration)
+        frame = self.video_source.get_frame()
         if frame is not None:  # frame captured without any errors
             frame = cv2.circle(frame, (self.selection[0], self.selection[1]), self.selection[2], (255, 0, 0, 255), 1)  # outer circle
             frame = cv2.circle(frame, (self.selection[0], self.selection[1]), 3, (255, 0, 0, 255), -1)  # center point
