@@ -147,10 +147,10 @@ class Application(tk.Tk):
         self.video_loop()
 
     def end_seek(self, event):
-        self.disable_frame_by_frame()
-
-        self.playing = True
-        self.after(1, self.video_loop)
+        if not self.playing:  # prevent random clicks on seekbar from freezing application
+            self.disable_frame_by_frame()
+            self.playing = True
+            self.after(1, self.video_loop)
 
     def prev_frame(self):
         # set flag in video source telling it that the next requested frame will be previous one
@@ -182,7 +182,7 @@ class Application(tk.Tk):
         self.btn_zero_time['state'] = tk.DISABLED
 
         self.video_source.frame_by_frame = False
-        self.video_source.playback_direction = self.slider_speed.get()
+        self.video_source.change_playback_speed(self.slider_speed.get())
 
     def set_start_time(self):
         # set start time for image recognition
