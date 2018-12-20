@@ -90,7 +90,12 @@ class Application(tk.Tk):
     def video_loop(self):
         # get frame from videosource and show it with tkinter
         # frame = self.video_source.next_video_frame()
-        frame, frame_pos, frame_duration = self.video_source.get_frame()
+        ret = self.video_source.get_frame()
+        if ret:
+            frame, frame_pos, frame_duration = ret
+        else:  # got no frame; set needed variables
+            frame = None
+            frame_duration = 1
         cv2.waitKey(frame_duration)
         if frame is not None:  # frame captured without any errors
             frame = cv2.circle(frame, (self.selection[0], self.selection[1]), self.selection[2], (255, 0, 0, 255), 1)  # outer circle
@@ -121,22 +126,22 @@ class Application(tk.Tk):
             self.disable_frame_by_frame()
             self.after(1, self.video_loop)
 
-    def change_playback_speed(self, factor):
+    def change_playback_speed(self, speed):
         # changes playback speed; default playbackspeed is multiplied by "factor"
         # zero can't be used by video source and is rather used to pause video playback completely
-        factor = float(factor)
-        if factor == 0:
+        speed = float(speed)
+        if speed == 0:
             self.playing = False  # stop playback
             self.video_source.playback_direction = 1
             self.enable_frame_by_frame()
-        elif factor != 0 and not self.playing:
+        elif speed != 0 and not self.playing:
             self.playing = True
             self.disable_frame_by_frame()
-            self.video_source.change_playback_speed(factor)
+            self.video_source.set_playback_speed(speed)
             # start playback
             self.after(1, self.video_loop)
         else:
-            self.video_source.change_playback_speed(factor)
+            self.video_source.set_playback_speed(speed)
 
     def seek_to(self, event):
         self.playing = False
@@ -156,13 +161,13 @@ class Application(tk.Tk):
 
     def prev_frame(self):
         # set flag in video source telling it that the next requested frame will be previous one
-        self.video_source.change_playback_speed(-1)
+        self.video_source.set_playback_speed(-1)
         # call videoloop without setting player state to playing so it will only run once
         self.after(1, self.video_loop)
 
     def next_frame(self):
         # call videoloop without setting player state to playing so it will only run once
-        self.video_source.change_playback_speed(1)
+        self.video_source.set_playback_speed(1)
         self.after(1, self.video_loop)
 
     def enable_frame_by_frame(self):
@@ -173,8 +178,6 @@ class Application(tk.Tk):
         self.btn_end_time['state'] = tk.NORMAL
         self.btn_zero_time['state'] = tk.NORMAL
 
-        self.video_source.frame_by_frame = False
-
     def disable_frame_by_frame(self):
         # disable frame-by-frame and timing control buttons
         self.btn_prev_frame['state'] = tk.DISABLED
@@ -183,8 +186,7 @@ class Application(tk.Tk):
         self.btn_end_time['state'] = tk.DISABLED
         self.btn_zero_time['state'] = tk.DISABLED
 
-        self.video_source.frame_by_frame = False
-        self.video_source.change_playback_speed(self.slider_speed.get())
+        self.video_source.set_playback_speed(self.slider_speed.get())
 
     def set_start_time(self):
         # set start time for image recognition
