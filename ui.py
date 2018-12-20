@@ -90,8 +90,8 @@ class Application(tk.Tk):
     def video_loop(self):
         # get frame from videosource and show it with tkinter
         # frame = self.video_source.next_video_frame()
-        cv2.waitKey(self.video_source.playback_frame_duration)
-        frame = self.video_source.get_frame()
+        frame, frame_pos, frame_duration = self.video_source.get_frame()
+        cv2.waitKey(frame_duration)
         if frame is not None:  # frame captured without any errors
             frame = cv2.circle(frame, (self.selection[0], self.selection[1]), self.selection[2], (255, 0, 0, 255), 1)  # outer circle
             frame = cv2.circle(frame, (self.selection[0], self.selection[1]), 3, (255, 0, 0, 255), -1)  # center point
@@ -101,8 +101,8 @@ class Application(tk.Tk):
             self.panel.config(image=imgtk)  # show the image
 
             # playback progress information
-            time_code = self.video_source.capture.get(cv2.CAP_PROP_POS_MSEC) / 1000
-            frame = int(self.video_source.capture.get(cv2.CAP_PROP_POS_FRAMES))
+            time_code = frame_pos / self.video_source.source_fps
+            frame = int(frame_pos)
             self.label_time_code['text'] = str(frame) + ' / ' + "{0:.2f}".format(time_code) + 's'
             self.slider_playback.set(frame)
 
@@ -156,13 +156,13 @@ class Application(tk.Tk):
 
     def prev_frame(self):
         # set flag in video source telling it that the next requested frame will be previous one
-        self.video_source.playback_direction = -1
+        self.video_source.change_playback_speed(-1)
         # call videoloop without setting player state to playing so it will only run once
         self.after(1, self.video_loop)
 
     def next_frame(self):
         # call videoloop without setting player state to playing so it will only run once
-        self.video_source.playback_direction = 1
+        self.video_source.change_playback_speed(1)
         self.after(1, self.video_loop)
 
     def enable_frame_by_frame(self):
