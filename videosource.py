@@ -2,8 +2,13 @@ import cv2
 import collections
 import threading
 
-# TODO reversing direction is not immediate
-# TODO threaded videoloading results in the playbackbar beeing jittery
+# Video source class - the following actions are supported
+#  - forward and reverse playback
+#       (reverse playback is slow; this is an inherent issue of videodecoding)
+#  - seeking to a specified frame
+#  - change playback speed while playing
+#       (at playback speeds above two times source fps this feature skips frames to be faster)
+#  - frame by frame playback (forward and reverse) is supported through default get_frame method
 
 
 class VideoSource:
@@ -42,6 +47,8 @@ class VideoSource:
         if ok:
             self.frame_buffer.appendleft((cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA),
                                           frame_pos, self.playback_frame_duration))
+        else:
+            return None
 
     def preload_framebuffer(self):
         while len(self.frame_buffer) < self.frame_buffer_length:
@@ -90,7 +97,7 @@ class VideoSource:
         # self.seek_target = frame * 1000 / self.source_fps
         self.seek_target = frame
 
-    def change_playback_speed(self, speed):
+    def set_playback_speed(self, speed):
         dir_old_new = speed * self.playback_direction
 
         if speed > 0:
@@ -100,7 +107,13 @@ class VideoSource:
 
         if dir_old_new < 0:
             # one is negative and one positive, meaning new direction not equal to old direction
-            self.seek_target = self.frame_buffer[-1][1] + 2*self.playback_direction
+            try:
+                seek_target = self.frame_buffer[-1][1] + 2*self.playback_direction
+            except IndexError:
+                # buffer empty; most probably end of file, read frame from self.capture
+                # not always used as a none-empty buffer offsets the frame position from self.capure
+                seek_target = self.capture.get(cv2.CAP_PROP_POS_FRAMES) + 2 * self.playback_direction
+            self.seek_target = seek_target if seek_target >=0 else 0
             self.frame_buffer.clear()
             self.preload_framebuffer()
 
