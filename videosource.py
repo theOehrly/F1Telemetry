@@ -11,37 +11,47 @@ class VideoSource:
         self.source_file = videofile
         self.capture = cv2.VideoCapture(self.source_file)  # video source
 
-        self.frame_buffer = collections.deque()
-        self.buffer_thread = None
-
-        self.playback_direction = 1  # either 1 or -1
-        self.frame_by_frame = False  # if true, frames are returned without delay
-        self.seek_target = None
-        self.reverse_once = False  # if set next_video_frame returns previous frame once
-
+        # some information about the source file; values are constants
         self.source_fps = self.capture.get(cv2.CAP_PROP_FPS)  # video fps
         self.source_frame_duration = int(1000 / self.source_fps)  # duration of one frame
-        self.playback_frame_duration = self.source_frame_duration  # can be different from source due to playbackspeed
-        self.frame_skip_factor = 1  # 1=every frame, 2=every 2nd frame, ...
-
         self.total_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
         self.duration = self.total_frames / self.source_fps  # video duration
 
-        # prefill frame buffer
-        while len(self.frame_buffer) < 1:
-            self.top_up_buffer()
+        # threaded frame loading into a buffer
+        self.frame_buffer = collections.deque()
+        # a deque with target length 1 used because of access from multiple threads
+        # it ensures that even if when timing between threads is not as expected
+        # no frames get skipped or lost, as the deque can increase length
+        self.frame_buffer_length = 1
+        self.buffer_reload_thread = None
+
+        # playback controls
+        self.playback_direction = 1  # either 1 (forward) or -1 (backward)
+        self.seek_target = None  # target frame; gets set when seeking was requested
+        self.frame_skip_factor = 1  # 1=every frame, 2=every 2nd frame, ... used for high playback speeds
+        self.playback_frame_duration = self.source_frame_duration  # can be different from source due to playbackspeed
+        # playback_frame_duration is used by the GUI to determine frame timing. It also changes depending on
+        # frame skipping therefore it is calculated by the videosource
+
+        self.preload_framebuffer()
 
     def top_up_buffer(self):
         self.set_position()
+        frame_pos = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
         ok, frame = self.capture.read()
         if ok:
-            self.frame_buffer.appendleft(cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA))
+            self.frame_buffer.appendleft((cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA),
+                                          frame_pos, self.playback_frame_duration))
+
+    def preload_framebuffer(self):
+        while len(self.frame_buffer) < self.frame_buffer_length:
+            self.top_up_buffer()
 
     def get_frame(self):
-        if self.buffer_thread:
-            self.buffer_thread.join()
-        self.buffer_thread = threading.Thread(target=self.top_up_buffer)
-        self.buffer_thread.start()
+        if self.buffer_reload_thread:
+            self.buffer_reload_thread.join()
+        self.buffer_reload_thread = threading.Thread(target=self.top_up_buffer)
+        self.buffer_reload_thread.start()
         # self.top_up_buffer()
         if self.frame_buffer:
             return self.frame_buffer.pop()
@@ -53,15 +63,11 @@ class VideoSource:
 
             # clear buffer and refill as frames in it just got useless
             self.frame_buffer.clear()
-            while len(self.frame_buffer) < 3:
-                ok, frame = self.capture.read()
-                if ok:
-                    self.frame_buffer.appendleft(cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA))
 
             # reset seek target so we don't seek to it again
             self.seek_target = None
 
-        if self.playback_direction == -1:
+        elif self.playback_direction == -1:
             # play reverse
             frame_position_is = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
             if frame_position_is >= 0:
@@ -85,14 +91,18 @@ class VideoSource:
         self.seek_target = frame
 
     def change_playback_speed(self, speed):
-        if speed * self.playback_direction == -1:
-            # one is negative and one positive, meaning new direction not equal to old direction
-            self.frame_buffer.reverse()
+        dir_old_new = speed * self.playback_direction
 
         if speed > 0:
             self.playback_direction = 1
         elif speed < 0:
             self.playback_direction = -1
+
+        if dir_old_new < 0:
+            # one is negative and one positive, meaning new direction not equal to old direction
+            self.seek_target = self.frame_buffer[-1][1] + 2*self.playback_direction
+            self.frame_buffer.clear()
+            self.preload_framebuffer()
 
         self.frame_skip_factor = int(abs(speed)) if abs(speed) >= 1 else 1
         # used to skip frames so that playback framerate stays within one to two times source fps
