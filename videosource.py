@@ -27,6 +27,8 @@ class VideoSource:
         # a deque with target length 1 used because of access from multiple threads
         # it ensures that even if when timing between threads is not as expected
         # no frames get skipped or lost, as the deque can increase length
+        # the code supports longer buffer length but currently this leads to a slugish user
+        # experience as most imortantly playback speed changes are not happening instantaneous then
         self.frame_buffer_length = 1
         self.buffer_reload_thread = None
 
