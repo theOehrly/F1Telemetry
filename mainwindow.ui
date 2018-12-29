@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1033</width>
-    <height>685</height>
+    <width>1087</width>
+    <height>808</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -53,6 +53,9 @@
           </property>
           <property name="pixmap">
            <pixmap>example.png</pixmap>
+          </property>
+          <property name="scaledContents">
+           <bool>true</bool>
           </property>
           <property name="alignment">
            <set>Qt::AlignCenter</set>
@@ -474,7 +477,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1033</width>
+     <width>1087</width>
      <height>25</height>
     </rect>
    </property>

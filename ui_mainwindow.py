@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1033, 685)
+        MainWindow.resize(1087, 808)
         MainWindow.setStyleSheet("")
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -34,6 +34,7 @@ class Ui_MainWindow(object):
         self.lbl_display.setMinimumSize(QtCore.QSize(640, 360))
         self.lbl_display.setText("")
         self.lbl_display.setPixmap(QtGui.QPixmap("example.png"))
+        self.lbl_display.setScaledContents(True)
         self.lbl_display.setAlignment(QtCore.Qt.AlignCenter)
         self.lbl_display.setObjectName("lbl_display")
         self.verticalLayout.addWidget(self.lbl_display)
@@ -202,7 +203,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_2.addWidget(self.tabVideo)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1033, 25))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1087, 25))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")

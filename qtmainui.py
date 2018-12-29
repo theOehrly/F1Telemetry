@@ -1,9 +1,11 @@
+import sys
+import cv2
+
 from PyQt5.QtWidgets import QApplication, QMainWindow
-from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QImage, QPixmap, QMouseEvent, QResizeEvent
+from PyQt5 import QtCore
 
 from ui_mainwindow import Ui_MainWindow
-import sys
 from videosource import VideoSource
 
 
@@ -11,12 +13,16 @@ class MainUI(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
 
+        self.selection = [81, 359, 42]
+        self.videores = [640, 360]
+        self.videoaspectratio = self.videores[0]/self.videores[1]
+
         # self.ui = ui_mainwindow.Ui_MainWindow()
         self.setupUi(self)
         self.playing = False
         self.was_playing = False
 
-        self.frame_timer = QTimer()
+        self.frame_timer = QtCore.QTimer()
         self.frame_timer.timeout.connect(self.load_next_frame)
 
         self.videosource = VideoSource('D:\\Dateien\\Projekte\\F1Telemetry\\Races\\2018\\Brasilien\\vettelq3.mp4')
@@ -44,8 +50,36 @@ class MainUI(QMainWindow, Ui_MainWindow):
         self.btn_previousframe.clicked.connect(self.previous_frame)
         self.btn_nextframe.clicked.connect(self.next_frame)
 
+        # mouse tracking for manipulating selection
+        self.lbl_display.setScaledContents(True)
+        self.lbl_display.setMouseTracking(True)
+        self.lbl_display.installEventFilter(self)
+
         self.load_next_frame()
         self.show()
+
+    def eventFilter(self, _object, _event):
+        if _event.type() == QMouseEvent.MouseMove and _event.buttons() == QtCore.Qt.LeftButton:
+            _event.accept()
+            print('move', _event.x(), _event.y())
+            return True
+        if _event.type() == QResizeEvent.Resize:
+            _event.accept()
+            self.update_displaylbl_margins()
+            return True
+        return False
+
+    def update_displaylbl_margins(self):
+        lblaspectratio = self.lbl_display.width()/self.lbl_display.height()
+        if lblaspectratio > self.videoaspectratio:
+            # too wide
+            m = int(self.lbl_display.width() - self.lbl_display.height() * self.videoaspectratio)
+            self.lbl_display.setContentsMargins(m/2, 0, m/2, 0)
+
+        elif lblaspectratio < self.videoaspectratio:
+            # too tall
+            m = int(self.lbl_display.height() - self.lbl_display.width() / self.videoaspectratio)
+            self.lbl_display.setContentsMargins(0, m/2, 0, m/2)
 
     def load_next_frame(self, set_slider=True):
         frame, frame_pos, frame_duration = self.videosource.get_frame()
