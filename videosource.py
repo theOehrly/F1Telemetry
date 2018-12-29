@@ -47,7 +47,8 @@ class VideoSource:
         frame_pos = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
         ok, frame = self.capture.read()
         if ok:
-            self.frame_buffer.appendleft((cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA),
+            # convert to rgb for PyQt
+            self.frame_buffer.appendleft((cv2.cvtColor(frame, cv2.COLOR_BGR2RGB),
                                           frame_pos, self.playback_frame_duration))
         else:
             return None
