@@ -23,7 +23,8 @@ class MainUI(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.playing = False
         self.was_playing = False
-        self.current_frame = None
+        self.frame = None
+        self.frame_pos = 0
 
         self.frame_timer = QtCore.QTimer()
         self.frame_timer.timeout.connect(self.load_next_frame)
@@ -63,6 +64,11 @@ class MainUI(QMainWindow, Ui_MainWindow):
         self.selection.set_y(self.videores[1] / 2)
         self.selection.set_radius(self.videores[1] / 6)
 
+        # set bind to frame start/zero/end selection buttons
+        self.btn_markstart.clicked.connect(self.set_start_frame)
+        self.btn_markend.clicked.connect(self.set_end_frame)
+        self.btn_markzero.clicked.connect(self.set_zero_frame)
+
         self.load_next_frame()
         self.show()
 
@@ -95,20 +101,20 @@ class MainUI(QMainWindow, Ui_MainWindow):
 
     def load_next_frame(self, set_slider=True):
         # get next frame and draw it on label
-        self.current_frame, frame_pos, frame_duration = self.videosource.get_frame()
+        self.frame, self.frame_pos, frame_duration = self.videosource.get_frame()
         self.draw_frame()
 
         # update progressbar and text
-        str_current = self.format_frame_time(frame_pos, frame_pos/self.videosource.source_fps)
+        str_current = self.format_frame_time(self.frame_pos, self.frame_pos / self.videosource.source_fps)
         self.lbl_playbackpos.setText(str_current)
         # set slider (is not set when seeking by dragging slider)
         if set_slider:
-            self.slider_videopos.setValue(frame_pos)
+            self.slider_videopos.setValue(self.frame_pos)
 
     def draw_frame(self):
         # draw the current frame on th label and
         # first the currently selected region is marked using opencv
-        frame = cv2.circle(copy.copy(self.current_frame), (self.selection.x, self.selection.y), self.selection.radius,
+        frame = cv2.circle(copy.copy(self.frame), (self.selection.x, self.selection.y), self.selection.radius,
                            (255, 0, 0, 255), 1, cv2.LINE_AA)  # outer circle
 
         cv2.circle(frame, (self.selection.x, self.selection.y), 3, (255, 0, 0, 255), -1, cv2.LINE_AA)  # center point
@@ -214,6 +220,21 @@ class MainUI(QMainWindow, Ui_MainWindow):
         # only redraw frame when not playing to save unnecessary pixmap updates
         if not self.playing:
             self.draw_frame()
+
+    def set_start_frame(self):
+        self.selection.set_start_frame(self.frame_pos)
+        self.lbl_markstart.setText(self.format_frame_time(self.frame_pos,
+                                                          self.frame_pos/self.videosource.source_fps))
+
+    def set_end_frame(self):
+        self.selection.set_end_frame(self.frame_pos)
+        self.lbl_markend.setText(self.format_frame_time(self.frame_pos,
+                                                        self.frame_pos/self.videosource.source_fps))
+
+    def set_zero_frame(self):
+        self.selection.set_zero_frame(self.frame_pos)
+        self.lbl_markzero.setText(self.format_frame_time(self.frame_pos,
+                                                         self.frame_pos/self.videosource.source_fps))
 
     @staticmethod
     def format_frame_time(frames, seconds):
