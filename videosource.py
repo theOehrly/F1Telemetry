@@ -7,7 +7,7 @@ import threading
 #       (reverse playback is slow; this is an inherent issue of videodecoding)
 #  - seeking to a specified frame
 #  - change playback speed while playing
-#       (at playback speeds above two times source fps this feature skips frames to be faster)
+#       (at playback speeds above two times source fps the videosource skips frames to be faster)
 #  - frame by frame playback (forward and reverse) is supported through default get_frame method
 
 
@@ -43,7 +43,7 @@ class VideoSource:
         self.preload_framebuffer()
 
     def top_up_buffer(self):
-        self.set_position()
+        self.set_position()  # takes care of seeking, frame skipping and reverse playback
         frame_pos = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
         ok, frame = self.capture.read()
         if ok:
@@ -62,7 +62,7 @@ class VideoSource:
             self.buffer_reload_thread.join()
         self.buffer_reload_thread = threading.Thread(target=self.top_up_buffer)
         self.buffer_reload_thread.start()
-        # self.top_up_buffer()
+        # self.top_up_buffer()  # use instead of threaded version above if needed for debugging
         if self.frame_buffer:
             return self.frame_buffer.pop()
 
@@ -87,11 +87,9 @@ class VideoSource:
 
         elif self.frame_skip_factor != 1:
             # play forward but speed is greater than 2, so we skip some frames
-            frame_position_is = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
-            frame_position_new = frame_position_is + (self.frame_skip_factor - 1)
-
-            if frame_position_new <= self.total_frames:
-                self.capture.set(cv2.CAP_PROP_POS_FRAMES, frame_position_new)
+            # the most effective way of doing this (when playing forwards) is reading the frames but just don't use them
+            for _ in range(self.frame_skip_factor-1):
+                self.capture.read()
 
     def next_raw_frame(self):
         return self.capture.read()
