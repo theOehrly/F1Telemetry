@@ -8,13 +8,14 @@ from PyQt5 import QtCore
 
 from ui_mainwindow import Ui_MainWindow
 from videosource import VideoSource
+from datastruct import SelectionData
 
 
 class MainUI(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
 
-        self.selection = [81, 359, 42]
+        self.selection = SelectionData()
         self.videores = [640, 360]
         self.videoaspectratio = self.videores[0]/self.videores[1]
 
@@ -56,6 +57,11 @@ class MainUI(QMainWindow, Ui_MainWindow):
         self.lbl_display.setScaledContents(True)
         self.lbl_display.setMouseTracking(True)
         self.lbl_display.installEventFilter(self)
+
+        # set selection to something sane
+        self.selection.set_x(self.videores[0] / 2)
+        self.selection.set_y(self.videores[1] / 2)
+        self.selection.set_radius(self.videores[1] / 6)
 
         self.load_next_frame()
         self.show()
@@ -102,10 +108,10 @@ class MainUI(QMainWindow, Ui_MainWindow):
     def draw_frame(self):
         # draw the current frame on th label and
         # first the currently selected region is marked using opencv
-        frame = cv2.circle(copy.copy(self.current_frame), (self.selection[0], self.selection[1]), self.selection[2],
+        frame = cv2.circle(copy.copy(self.current_frame), (self.selection.x, self.selection.y), self.selection.radius,
                            (255, 0, 0, 255), 1, cv2.LINE_AA)  # outer circle
 
-        cv2.circle(frame, (self.selection[0], self.selection[1]), 3, (255, 0, 0, 255), -1, cv2.LINE_AA)  # center point
+        cv2.circle(frame, (self.selection.x, self.selection.y), 3, (255, 0, 0, 255), -1, cv2.LINE_AA)  # center point
 
         img = QImage(frame.data, frame.shape[1], frame.shape[0], frame.shape[1] * 3, QImage.Format_RGB888)
         self.lbl_display.setPixmap(QPixmap(img))
@@ -190,9 +196,9 @@ class MainUI(QMainWindow, Ui_MainWindow):
         selection_y = int((_event.y() - size.y()) * self.videores[1] / size.height())
 
         if selection_x >= 0:
-            self.selection[0] = selection_x
+            self.selection.set_x(selection_x)
         if selection_y >= 0:
-            self.selection[1] = selection_y
+            self.selection.set_y(selection_y)
 
         # only redraw frame when not playing to save unnecessary pixmap updates
         if not self.playing:
@@ -201,9 +207,9 @@ class MainUI(QMainWindow, Ui_MainWindow):
     def mouse_scroll(self, _event):
         # increase or decrease selection size by scrolling
         if _event.angleDelta().y() > 0:
-            self.selection[2] += 1
-        elif _event.angleDelta().y() < 0 and self.selection[2] > 0:
-            self.selection[2] -= 1
+            self.selection.set_radius_delta(1)
+        elif _event.angleDelta().y() < 0 and self.selection.radius > 0:
+            self.selection.set_radius_delta(-1)
 
         # only redraw frame when not playing to save unnecessary pixmap updates
         if not self.playing:
