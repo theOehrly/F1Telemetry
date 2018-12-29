@@ -1,8 +1,9 @@
 import sys
 import cv2
+import copy
 
 from PyQt5.QtWidgets import QApplication, QMainWindow
-from PyQt5.QtGui import QImage, QPixmap, QMouseEvent, QResizeEvent
+from PyQt5.QtGui import QImage, QPixmap, QResizeEvent, QInputEvent
 from PyQt5 import QtCore
 
 from ui_mainwindow import Ui_MainWindow
@@ -21,6 +22,7 @@ class MainUI(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.playing = False
         self.was_playing = False
+        self.current_frame = None
 
         self.frame_timer = QtCore.QTimer()
         self.frame_timer.timeout.connect(self.load_next_frame)
@@ -59,11 +61,15 @@ class MainUI(QMainWindow, Ui_MainWindow):
         self.show()
 
     def eventFilter(self, _object, _event):
-        if _event.type() == QMouseEvent.MouseMove and _event.buttons() == QtCore.Qt.LeftButton:
+        if _event.type() == QInputEvent.MouseMove and _event.buttons() == QtCore.Qt.LeftButton:
             _event.accept()
-            print('move', _event.x(), _event.y())
+            self.mouse_drag(_event)
             return True
-        if _event.type() == QResizeEvent.Resize:
+        elif _event.type() == QInputEvent.Wheel:
+            _event.accept()
+            self.mouse_scroll(_event)
+            return True
+        elif _event.type() == QResizeEvent.Resize:
             _event.accept()
             self.update_lbldisplay_margins()
             return True
@@ -82,14 +88,27 @@ class MainUI(QMainWindow, Ui_MainWindow):
             self.lbl_display.setContentsMargins(0, m, 0, m)
 
     def load_next_frame(self, set_slider=True):
-        frame, frame_pos, frame_duration = self.videosource.get_frame()
-        img = QImage(frame.data, frame.shape[1], frame.shape[0], frame.shape[1]*3, QImage.Format_RGB888)
-        self.lbl_display.setPixmap(QPixmap(img))
+        # get next frame and draw it on label
+        self.current_frame, frame_pos, frame_duration = self.videosource.get_frame()
+        self.draw_frame()
 
+        # update progressbar and text
         str_current = self.format_frame_time(frame_pos, frame_pos/self.videosource.source_fps)
         self.lbl_playbackpos.setText(str_current)
+        # set slider (is not set when seeking by dragging slider)
         if set_slider:
             self.slider_videopos.setValue(frame_pos)
+
+    def draw_frame(self):
+        # draw the current frame on th label and
+        # first the currently selected region is marked using opencv
+        frame = cv2.circle(copy.copy(self.current_frame), (self.selection[0], self.selection[1]), self.selection[2],
+                           (255, 0, 0, 255), 1, cv2.LINE_AA)  # outer circle
+
+        cv2.circle(frame, (self.selection[0], self.selection[1]), 3, (255, 0, 0, 255), -1, cv2.LINE_AA)  # center point
+
+        img = QImage(frame.data, frame.shape[1], frame.shape[0], frame.shape[1] * 3, QImage.Format_RGB888)
+        self.lbl_display.setPixmap(QPixmap(img))
 
     def slider_videopos_pressed(self):
         self.was_playing = self.playing
@@ -160,6 +179,35 @@ class MainUI(QMainWindow, Ui_MainWindow):
     def previous_frame(self):
         self.videosource.set_playback_speed(-1)
         self.load_next_frame()
+
+    def mouse_drag(self, _event):
+        # move selection when dragging mouse in video
+        size = self.lbl_display.contentsRect()
+
+        # because of padding mouse coordinates in label may not be the same as the coordinates of the mouse in the
+        # actual video frame; proper coordinates need to be calculated based on pixmap padding and scaling
+        selection_x = int((_event.x() - size.x()) * self.videores[0] / size.width())
+        selection_y = int((_event.y() - size.y()) * self.videores[1] / size.height())
+
+        if selection_x >= 0:
+            self.selection[0] = selection_x
+        if selection_y >= 0:
+            self.selection[1] = selection_y
+
+        # only redraw frame when not playing to save unnecessary pixmap updates
+        if not self.playing:
+            self.draw_frame()
+
+    def mouse_scroll(self, _event):
+        # increase or decrease selection size by scrolling
+        if _event.angleDelta().y() > 0:
+            self.selection[2] += 1
+        elif _event.angleDelta().y() < 0 and self.selection[2] > 0:
+            self.selection[2] -= 1
+
+        # only redraw frame when not playing to save unnecessary pixmap updates
+        if not self.playing:
+            self.draw_frame()
 
     @staticmethod
     def format_frame_time(frames, seconds):
