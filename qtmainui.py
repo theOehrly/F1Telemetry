@@ -65,21 +65,21 @@ class MainUI(QMainWindow, Ui_MainWindow):
             return True
         if _event.type() == QResizeEvent.Resize:
             _event.accept()
-            self.update_displaylbl_margins()
+            self.update_lbldisplay_margins()
             return True
         return False
 
-    def update_displaylbl_margins(self):
+    def update_lbldisplay_margins(self):
         lblaspectratio = self.lbl_display.width()/self.lbl_display.height()
         if lblaspectratio > self.videoaspectratio:
             # too wide
-            m = int(self.lbl_display.width() - self.lbl_display.height() * self.videoaspectratio)
-            self.lbl_display.setContentsMargins(m/2, 0, m/2, 0)
+            m = int((self.lbl_display.width() - self.lbl_display.height() * self.videoaspectratio) / 2)
+            self.lbl_display.setContentsMargins(m, 0, m, 0)
 
         elif lblaspectratio < self.videoaspectratio:
             # too tall
-            m = int(self.lbl_display.height() - self.lbl_display.width() / self.videoaspectratio)
-            self.lbl_display.setContentsMargins(0, m/2, 0, m/2)
+            m = int((self.lbl_display.height() - self.lbl_display.width() / self.videoaspectratio) / 2)
+            self.lbl_display.setContentsMargins(0, m, 0, m)
 
     def load_next_frame(self, set_slider=True):
         frame, frame_pos, frame_duration = self.videosource.get_frame()
