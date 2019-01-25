@@ -105,7 +105,10 @@ class MainUI(QMainWindow, Ui_MainWindow):
 
     def load_next_frame(self, set_slider=True):
         # get next frame and draw it on label
-        self.frame, self.frame_pos, frame_duration = self.videosource.get_frame()
+        ret_val = self.videosource.get_frame()
+        if not ret_val:
+            return
+        self.frame, self.frame_pos, frame_duration = ret_val
         self.draw_frame()
 
         # update progressbar and text
