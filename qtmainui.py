@@ -12,11 +12,13 @@ from datastruct import SelectionData
 
 
 class MainUI(QMainWindow, Ui_MainWindow):
-    def __init__(self):
+    def __init__(self, selection_data, videofile):
         super().__init__()
 
-        self.selection = SelectionData()
-        self.videores = [640, 360]
+        self.videosource = VideoSource(videofile)
+        self.selection = selection_data
+        self.videores = [self.videosource.capture.get(cv2.CAP_PROP_FRAME_WIDTH),
+                         self.videosource.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)]
         self.videoaspectratio = self.videores[0]/self.videores[1]
 
         # self.ui = ui_mainwindow.Ui_MainWindow()
@@ -29,9 +31,11 @@ class MainUI(QMainWindow, Ui_MainWindow):
         self.frame_timer = QtCore.QTimer()
         self.frame_timer.timeout.connect(self.load_next_frame)
 
-        self.videosource = VideoSource('D:\\Dateien\\Projekte\\F1Telemetry\\Races\\2018\\Brasilien\\vettelq3.mp4')
-
         self.init_ui()
+
+    def closeEvent(self, *args, **kwargs):
+        self.videosource.release()
+        super().closeEvent(*args, **kwargs)
 
     def init_ui(self):
         # playpause button
