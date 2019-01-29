@@ -193,15 +193,15 @@ def do_ocr_speed(img, data, index, size):
     # ocr_speed_roi = cv2.blur(ocr_speed_roi, (2, 2))
     ocr_speed_roi = cv2.resize(ocr_speed_roi, (50, 22), cv2.INTER_CUBIC)
     # fname = 'learn/img{}.png'.format(index)
-    #
-    # cv2.imwrite(fname, ocr_speed_roi)
-    #
+
+    # cv2.imwrite('testruns/current.png', ocr_speed_roi)
+
     # cv2.imshow('test', ocr_speed_roi)
-    # cv2.waitKey(0)
+    # cv2.waitKey(1)
     value = pytesseract.image_to_string(ocr_speed_roi,
                                         config='--psm 8 -l f1c -c tessedit_char_whitelist=0123456789')
     value = value.replace(' ', '')
-    print(value)
+    # print(value)
     data[index] = value
 
 
@@ -286,10 +286,48 @@ def do_regocgnition(source, timing_data, selection, outfile, uid):
             timecode = (source.capture.get(cv2.CAP_PROP_POS_MSEC) - timecode_offset) / 1000
             csv_file.write('; '.join(ocr_values) + '; ' + str(timecode) + '\n')
 
-            print(timecode)
+            # print(timecode)
 
         else:
             break
 
     cv2.destroyAllWindows()
     csv_file.close()
+
+
+def ocr_test(source, selection):
+    # create roi image
+    x1 = selection.x - selection.radius
+    x2 = selection.x + selection.radius
+    y1 = selection.y - selection.radius
+    y2 = selection.y + selection.radius
+    roi_image_size = selection.radius * 2  # roi image is always a square so x = y in terms of size
+
+    source.seek_to(selection.start_frame - 1)  # seek to first frame which is to be processed
+    while True:
+        frame, *args = source.get_frame()
+        print('frame:', source.capture.get(cv2.CAP_PROP_POS_FRAMES))
+
+        roi_img = frame[y1:y2, x1:x2]
+
+        cv2.imwrite('testruns/current_roi.png', roi_img)
+
+        label_subtraction_mask, label_ocr_mask = create_label_masks(roi_img)
+
+        ocr_values = [0, 0, 0, 0, 0]
+
+        do_ocr_speed(label_ocr_mask, ocr_values, 0, roi_image_size)
+
+        # print(ocr_values)
+
+        print('Skip: ')
+        fn = int(input())
+        if fn > 0:
+            print('skipping')
+            source.seek_to(fn)
+            frame, *args = source.get_frame()
+        elif fn == -1:
+            break
+
+    cv2.destroyAllWindows()
+    # csv_file.close()

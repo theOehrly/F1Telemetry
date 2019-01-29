@@ -1,0 +1,16 @@
+test setup
+
+from datastruct import SelectionData
+from videosource import VideoSource
+import importlib
+import recognition
+
+infile = 'testfiles\\hamilton monza 2018 first q3 lap 1.19.390.mp4'
+src = VideoSource(infile)
+
+selection = SelectionData()
+selection.x = 164
+selection.y = 359
+selection.radius = 82
+
+importlib.reload(recognition)
