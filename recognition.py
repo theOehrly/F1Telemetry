@@ -228,15 +228,15 @@ def do_ocr_gear(img, data, index, size):
     data[index] = value
 
 
-def do_regocgnition(source, timing_data, selection, outfile, uid):
-    timecode_offset = timing_data[0] * (1000 / source.source_fps)  # set timecode for first frame
+def do_regocgnition(source, selection, outfile, uid):
+    timecode_offset = selection.zero_frame * (1000 / source.source_fps)  # set timecode for first frame
 
     # create roi image
-    x1 = selection[0] - selection[2]
-    x2 = selection[0] + selection[2]
-    y1 = selection[1] - selection[2]
-    y2 = selection[1] + selection[2]
-    roi_image_size = selection[2] * 2  # roi image is always a square so x = y in terms of size
+    x1 = selection.x - selection.radius
+    x2 = selection.x + selection.radius
+    y1 = selection.y - selection.radius
+    y2 = selection.y + selection.radius
+    roi_image_size = selection.radius * 2  # roi image is always a square so x = y in terms of size
 
     # roi_img = base_image[y1:y2, x1:x2]
 
@@ -247,8 +247,8 @@ def do_regocgnition(source, timing_data, selection, outfile, uid):
         headers[i] = headers[i] + '_' + uid
     csv_file.write('; '.join(headers) + '\n')
 
-    source.seek_to(timing_data[1] - 1)  # seek to first frame which is to be processed
-    while source.capture.get(cv2.CAP_PROP_POS_FRAMES) <= timing_data[2]:
+    source.seek_to(selection.start_frame - 1)  # seek to first frame which is to be processed
+    while source.capture.get(cv2.CAP_PROP_POS_FRAMES) <= selection.end_frame:
         ret, frame = source.next_raw_frame()
 
         if ret:
