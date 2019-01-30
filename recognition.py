@@ -189,17 +189,12 @@ def create_label_masks(img):
 
 def do_ocr_speed(img, data, index, size):
     ocr_speed_roi = img[int(0.75*size):int(0.95*size),
-                        int(0.32*size):int(0.68*size)]
-    # ocr_speed_roi = cv2.blur(ocr_speed_roi, (2, 2))
-    ocr_speed_roi = cv2.resize(ocr_speed_roi, (50, 22), cv2.INTER_CUBIC)
-    # fname = 'learn/img{}.png'.format(index)
-
-    # cv2.imwrite('testruns/current.png', ocr_speed_roi)
+                        int(0.32*size):int(0.69*size)]
 
     # cv2.imshow('test', ocr_speed_roi)
     # cv2.waitKey(1)
     value = pytesseract.image_to_string(ocr_speed_roi,
-                                        config='--psm 8 -l f1c -c tessedit_char_whitelist=0123456789')
+                                        config='--psm 8 -l f1a -c tessedit_char_whitelist=0123456789')
     value = value.replace(' ', '')
     # print(value)
     data[index] = value
