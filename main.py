@@ -1,18 +1,29 @@
-from videosource import VideoSource
-from recognition import do_regocgnition
+from PyQt5.Qt import QApplication
+import sys
 
-infile = 'D:\\Dateien\\Projekte\\F1Telemetry\\Races\\2018\\Brasilien\\vettelq3.mp4'
-uid = 'vet_q3'
+from videosource import VideoSource
+from qtmainui import MainUI
+from recognition import do_regocgnition
+from datastruct import SelectionData
+
+infile = 'testfiles\\hamilton monza 2018 first q3 lap 1.19.390.mp4'
+uid = 'f1a_nsc'
+
+outfile = 'testruns\\f1a_nsc.csv'
+
+selection = SelectionData()
+app = QApplication(sys.argv)
+mainui = MainUI(selection, infile)
+app.exec()
+# selection.x = 164
+# selection.y = 359
+# selection.radius = 82
+# selection.start_frame = 0
+# selection.zero_frame = 0
+# selection.end_frame = 2178
+
+print(selection.x, selection.y, selection.radius)
+print(selection.start_frame, selection.zero_frame, selection.end_frame)
 
 videosource = VideoSource(infile)
-# videosource = VideoSource('testfiles/test1.mp4')
-outfile = 'D:\\Dateien\\Projekte\\F1Telemetry\\Races\\2018\\Brasilien\\vettelq3.csv'
-
-timing_data = [0, 0, 0]
-selection = [81, 359, 42]
-
-print(selection)
-
-# do_regocgnition(videosource, timing_data, selection, outfile, uid)
-
-videosource.release()
+do_regocgnition(videosource, selection, outfile, uid)
