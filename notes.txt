@@ -1,4 +1,17 @@
+- f1a seems to be the better working trainingdata
+- custom trainingdata seems to be a lot faster than standard
+- image size for speed: (100, 44) good for large image
+                        (50, 22) good for smaller input image
+        --> testing required; may don't rescale at all?
+            --> don't rescale at all; adjusting textbox size solved issue
+
+
+
+
+
+#################################
 test setup
+#################################
 
 from datastruct import SelectionData
 from videosource import VideoSource
