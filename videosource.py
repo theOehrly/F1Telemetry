@@ -12,15 +12,17 @@ import threading
 
 
 class VideoSource:
-    def __init__(self, videofile):
-        self.source_file = videofile
-        self.capture = cv2.VideoCapture(self.source_file)  # video source
+    def __init__(self, videofile=None):
+        self.capture = None
 
         # some information about the source file; values are constants
-        self.source_fps = self.capture.get(cv2.CAP_PROP_FPS)  # video fps
-        self.source_frame_duration = int(1000 / self.source_fps)  # duration of one frame
-        self.total_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
-        self.duration = self.total_frames / self.source_fps  # video duration
+        self.source_fps = None  # video fps
+        self.source_frame_duration = None # duration of one frame
+        self.total_frames = None
+        self.duration = None # video duration
+
+        if videofile:
+            self.open_file(videofile)
 
         # threaded frame loading into a buffer
         self.frame_buffer = collections.deque()
@@ -40,9 +42,28 @@ class VideoSource:
         # playback_frame_duration is used by the GUI to determine frame timing. It also changes depending on
         # frame skipping therefore it is calculated by the videosource
 
+    def open_file(self, filepath):
+        self.capture = cv2.VideoCapture(filepath)  # video source
+        if not self.capture.get(cv2.CAP_PROP_FRAME_COUNT):
+            self.capture = None
+            return  # if ain't got no frames it ain't no videofile
+        self.load_source_info()
+        self.frame_buffer.clear()
         self.preload_framebuffer()
 
+    def load_source_info(self):
+        if self.capture:
+            # some information about the source file; values are constants
+            self.source_fps = self.capture.get(cv2.CAP_PROP_FPS)  # video fps
+            print(self.source_fps)
+            self.source_frame_duration = int(1000 / self.source_fps)  # duration of one frame
+            self.total_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
+            self.duration = self.total_frames / self.source_fps  # video duration
+
     def top_up_buffer(self):
+        if not self.capture:
+            return
+
         self.set_position()  # takes care of seeking, frame skipping and reverse playback
         frame_pos = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
         ok, frame = self.capture.read()
