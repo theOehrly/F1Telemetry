@@ -27,6 +27,7 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         self.frame_pos = 0
 
         self.frame_timer = QtCore.QTimer()
+        self.frame_timer.setTimerType(QtCore.Qt.PreciseTimer)
         self.frame_timer.timeout.connect(self.load_next_frame)
 
         self.init_ui()
