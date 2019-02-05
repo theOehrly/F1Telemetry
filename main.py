@@ -11,7 +11,7 @@ outfile = 'testruns\\f1a_nsc.csv'
 
 selection = SelectionData()
 app = QApplication(sys.argv)
-mainui = MainUI(selection, infile)
+mainui = MainUI(selection)
 app.exec()
 # selection.x = 164
 # selection.y = 359
