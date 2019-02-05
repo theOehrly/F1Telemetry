@@ -10,14 +10,14 @@ from videosource import VideoSource
 
 
 class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
-    def __init__(self, parentwidget, selection_data, videofile):
+    def __init__(self, parentwidget, selection_data):
         super().__init__(parentwidget)
 
-        self.videosource = VideoSource(videofile)
+        self.videosource = VideoSource()
         self.selection = selection_data
-        self.videores = [self.videosource.capture.get(cv2.CAP_PROP_FRAME_WIDTH),
-                         self.videosource.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)]
-        self.videoaspectratio = self.videores[0]/self.videores[1]
+
+        self.videores = list()
+        self.videoaspectratio = float()
 
         # self.ui = ui_mainwindow.Ui_MainWindow()
         self.setupUi(self)
@@ -30,6 +30,8 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         self.frame_timer.timeout.connect(self.load_next_frame)
 
         self.init_ui()
+        self.load_video()
+        self.show()
 
     def closeEvent(self, *args, **kwargs):
         self.videosource.release()
@@ -42,16 +44,6 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         # playback speed slider
         self.slider_speed.valueChanged.connect(lambda: self.change_playback_speed(self.slider_speed.value()))
 
-        # video progress slider
-        str_total = self.format_frame_time(self.videosource.total_frames, self.videosource.duration)
-        self.lbl_markend.setText(str_total)
-        self.lbl_playbacktotal.setText(str_total)
-
-        self.slider_videopos.setMaximum(self.videosource.total_frames)
-        self.slider_videopos.sliderPressed.connect(self.slider_videopos_pressed)
-        self.slider_videopos.sliderReleased.connect(self.slider_videopos_released)
-        self.slider_videopos.sliderMoved.connect(self.slider_videopos_value_changed)
-
         # frame by frame buttons
         self.btn_previousframe.clicked.connect(self.previous_frame)
         self.btn_nextframe.clicked.connect(self.next_frame)
@@ -61,18 +53,42 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         self.lbl_display.setMouseTracking(True)
         self.lbl_display.installEventFilter(self)
 
-        # set selection to something sane
-        self.selection.set_x(self.videores[0] / 2)
-        self.selection.set_y(self.videores[1] / 2)
-        self.selection.set_radius(self.videores[1] / 6)
-
         # set bind to frame start/zero/end selection buttons
         self.btn_markstart.clicked.connect(self.set_start_frame)
         self.btn_markend.clicked.connect(self.set_end_frame)
         self.btn_markzero.clicked.connect(self.set_zero_frame)
 
-        self.load_next_frame()
-        self.show()
+    def open_file(self, filepath):
+        self.videosource.open_file(filepath)
+        self.load_video()
+
+    def load_video(self):
+        if self.videosource.capture:
+            self.videores = [self.videosource.capture.get(cv2.CAP_PROP_FRAME_WIDTH),
+                             self.videosource.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)]
+            self.videoaspectratio = self.videores[0]/self.videores[1]
+
+            # video progress slider
+            str_total = self.format_frame_time(self.videosource.total_frames, self.videosource.duration)
+            self.lbl_markend.setText(str_total)
+            self.lbl_playbacktotal.setText(str_total)
+
+            self.slider_videopos.setMaximum(self.videosource.total_frames)
+            self.slider_videopos.sliderPressed.connect(self.slider_videopos_pressed)
+            self.slider_videopos.sliderReleased.connect(self.slider_videopos_released)
+            self.slider_videopos.sliderMoved.connect(self.slider_videopos_value_changed)
+
+            # set selection to something sane
+            self.selection.set_x(self.videores[0] / 2)
+            self.selection.set_y(self.videores[1] / 2)
+            self.selection.set_radius(self.videores[1] / 6)
+
+            self.load_next_frame()
+            self.update_lbldisplay_margins()
+            self.enable_vidctrl_btns()
+
+        else:
+            self.disable_vidctrl_btns()
 
     def eventFilter(self, _object, _event):
         if _event.type() == QInputEvent.MouseMove and _event.buttons() == QtCore.Qt.LeftButton:
@@ -90,7 +106,11 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         return False
 
     def update_lbldisplay_margins(self):
-        lblaspectratio = self.lbl_display.width()/self.lbl_display.height()
+        try:
+            lblaspectratio = self.lbl_display.width()/self.lbl_display.height()
+        except ZeroDivisionError:
+            return  # Zero Divison Error may happen when initializing widget
+
         if lblaspectratio > self.videoaspectratio:
             # too wide
             m = int((self.lbl_display.width() - self.lbl_display.height() * self.videoaspectratio) / 2)
@@ -169,6 +189,22 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         self.btn_markend.setDisabled(1)
         self.btn_markzero.setDisabled(1)
 
+    def disable_vidctrl_btns(self):
+        self.btn_previousframe.setDisabled(1)
+        self.btn_nextframe.setDisabled(1)
+        self.btn_markstart.setDisabled(1)
+        self.btn_markend.setDisabled(1)
+        self.btn_markzero.setDisabled(1)
+        self.btn_playpause.setDisabled(1)
+
+    def enable_vidctrl_btns(self):
+        self.btn_previousframe.setDisabled(0)
+        self.btn_nextframe.setDisabled(0)
+        self.btn_markstart.setDisabled(0)
+        self.btn_markend.setDisabled(0)
+        self.btn_markzero.setDisabled(0)
+        self.btn_playpause.setDisabled(0)
+
     def change_playback_speed(self, speed):
         speed /= 10
         self.lbl_playbackspeed.setText(str(speed))
@@ -198,6 +234,8 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         self.load_next_frame()
 
     def mouse_drag(self, _event):
+        if not self.videosource.capture:
+            return
         # move selection when dragging mouse in video
         size = self.lbl_display.contentsRect()
 
@@ -216,6 +254,8 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
             self.draw_frame()
 
     def mouse_scroll(self, _event):
+        if not self.videosource.capture:
+            return
         # increase or decrease selection size by scrolling
         if _event.angleDelta().y() > 0:
             self.selection.set_radius_delta(1)
