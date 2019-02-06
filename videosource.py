@@ -38,7 +38,7 @@ class VideoSource:
         self.playback_direction = 1  # either 1 (forward) or -1 (backward)
         self.seek_target = None  # target frame; gets set when seeking was requested
         self.frame_skip_factor = 1  # 1=every frame, 2=every 2nd frame, ... used for high playback speeds
-        self.playback_frame_duration = self.source_frame_duration  # can be different from source due to playbackspeed
+        self.playback_frame_duration = 0  # can be different from source due to playbackspeed
         # playback_frame_duration is used by the GUI to determine frame timing. It also changes depending on
         # frame skipping therefore it is calculated by the videosource
 
@@ -58,6 +58,7 @@ class VideoSource:
             self.source_fps = self.capture.get(cv2.CAP_PROP_FPS)  # video fps
             print(self.source_fps)
             self.source_frame_duration = int(1000 / self.source_fps)  # duration of one frame
+            self.playback_frame_duration = self.source_frame_duration
             self.total_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
             self.duration = self.total_frames / self.source_fps  # video duration
 
@@ -69,8 +70,7 @@ class VideoSource:
         frame_pos = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
         ok, frame = self.capture.read()
         if ok:
-            self.frame_buffer.appendleft((frame,
-                                          frame_pos, self.playback_frame_duration))
+            self.frame_buffer.appendleft((frame, frame_pos, self.playback_frame_duration))
         else:
             return None
 
