@@ -1,37 +1,73 @@
 import cv2
-import copy
 
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QImage, QPixmap, QResizeEvent, QInputEvent
+from PyQt5.QtGui import QImage, QPixmap, QResizeEvent, QInputEvent, QPainter, QPen, QPalette
 from PyQt5 import QtCore
 
 from ui.ui_videoplayerwidget import Ui_VideoPlayer
 from videosource import VideoSource
 
 
+class Overlay(QWidget):
+    """Overlay for drawing selection ontop of display widget """
+    def __init__(self, parent):
+        super().__init__(parent.lbl_display)
+
+        self.parent = parent
+
+        palette = QPalette(self.palette())
+        palette.setColor(palette.Background, QtCore.Qt.transparent)
+        self.setPalette(palette)
+
+        self.hide()
+
+    def paintEvent(self, event):
+        x = ((self.parent.selection.x + 1) * self.parent.videoscale) + self.parent.display_margins[0]
+        y = ((self.parent.selection.y + 1) * self.parent.videoscale) + self.parent.display_margins[1]
+        r = self.parent.selection.radius * self.parent.videoscale
+
+        painter = QPainter()
+        painter.begin(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        painter.setPen(QPen(QtCore.Qt.red, 1.0))
+        painter.drawEllipse(x - r, y - r, 2*r, 2*r)
+
+        painter.setPen(QPen(QtCore.Qt.red, 4.0))
+        painter.drawPoint(x, y)
+
+        painter.setPen(QPen(QtCore.Qt.NoPen))
+
+
 class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
     def __init__(self, parentwidget, selection_data):
         super().__init__(parentwidget)
 
+        # the videosource handles reading and delivering frames as well as seeking, playbackspeed,...
         self.videosource = VideoSource()
-        self.selection = selection_data
 
-        self.videores = list()
+        self.selection = selection_data  # selected region of interest and timeframe for OCR
+
+        self.videores = [0, 0]
         self.videoaspectratio = float()
+        self.videoscale = float()  # scaling factor; display video size / original video size
+        self.display_margins = (0, 0)  # (right/left, top/bottom); margins added around label pixmap
 
-        # self.ui = ui_mainwindow.Ui_MainWindow()
-        self.setupUi(self)
         self.playing = False
         self.was_playing = False
         self.frame = None
         self.frame_pos = 0
 
+        # a new frame is drawn every time the timer times out
+        # the timer interval is set depending on the frame duration calculated for each frame by the videosource
         self.frame_timer = QtCore.QTimer()
         self.frame_timer.setTimerType(QtCore.Qt.PreciseTimer)
-        self.frame_timer.timeout.connect(self.load_next_frame)
+        self.frame_timer.timeout.connect(self.draw_next_frame)
 
+        self.overlay = Overlay(self)
+
+        self.setupUi(self)
         self.init_ui()
-        self.load_video()
         self.show()
 
     def closeEvent(self, *args, **kwargs):
@@ -62,6 +98,7 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
     def open_file(self, filepath):
         self.videosource.open_file(filepath)
         self.load_video()
+        self.overlay.show()
 
     def load_video(self):
         if self.videosource.capture:
@@ -84,8 +121,8 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
             self.selection.set_y(self.videores[1] / 2)
             self.selection.set_radius(self.videores[1] / 6)
 
-            self.load_next_frame()
-            self.update_lbldisplay_margins()
+            self.draw_next_frame()
+            self.update_display_margins()
             self.enable_vidctrl_btns()
 
         else:
@@ -102,11 +139,19 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
             return True
         elif _event.type() == QResizeEvent.Resize:
             _event.accept()
-            self.update_lbldisplay_margins()
+            self.update_display_margins()
+            self.calculate_videoscale()
+            self.overlay.resize(_event.size())
             return True
         return False
 
-    def update_lbldisplay_margins(self):
+    def calculate_videoscale(self):
+        try:
+            self.videoscale = self.lbl_display.contentsRect().width() / self.videores[0]
+        except ZeroDivisionError:
+            self.videoscale = 1
+
+    def update_display_margins(self):
         try:
             lblaspectratio = self.lbl_display.width()/self.lbl_display.height()
         except ZeroDivisionError:
@@ -115,20 +160,23 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         if lblaspectratio > self.videoaspectratio:
             # too wide
             m = int((self.lbl_display.width() - self.lbl_display.height() * self.videoaspectratio) / 2)
-            self.lbl_display.setContentsMargins(m, 0, m, 0)
+            self.display_margins = (m, 0)
 
         elif lblaspectratio < self.videoaspectratio:
             # too tall
             m = int((self.lbl_display.height() - self.lbl_display.width() / self.videoaspectratio) / 2)
-            self.lbl_display.setContentsMargins(0, m, 0, m)
+            self.display_margins = (0, m)
 
-    def load_next_frame(self, set_slider=True):
+        self.lbl_display.setContentsMargins(self.display_margins[0], self.display_margins[1],
+                                            self.display_margins[0], self.display_margins[1])
+
+    def draw_next_frame(self, set_slider=True):
         # get next frame and draw it on label
         ret_val = self.videosource.get_frame()
         if not ret_val:
             return
         self.frame, self.frame_pos, frame_duration = ret_val
-        self.draw_frame()
+        self.update_pixmap()
 
         # update progressbar and text
         str_current = self.format_frame_time(self.frame_pos, self.frame_pos / self.videosource.source_fps)
@@ -137,15 +185,9 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         if set_slider:
             self.slider_videopos.setValue(self.frame_pos)
 
-    def draw_frame(self):
-        # draw the current frame on th label and
-        # first the currently selected region is marked using opencv
-        frame = cv2.circle(copy.copy(self.frame), (self.selection.x, self.selection.y), self.selection.radius,
-                           (0, 0, 255, 255), 1, cv2.LINE_AA)  # outer circle
-
-        cv2.circle(frame, (self.selection.x, self.selection.y), 3, (0, 0, 255, 255), -1, cv2.LINE_AA)  # center point
-
-        img = QImage(frame.data, frame.shape[1], frame.shape[0], frame.shape[1] * 3, QImage.Format_RGB888).rgbSwapped()
+    def update_pixmap(self):
+        img = QImage(self.frame.data, self.frame.shape[1], self.frame.shape[0], self.frame.shape[1] * 3,
+                     QImage.Format_RGB888).rgbSwapped()
         self.lbl_display.setPixmap(QPixmap(img))
 
     def slider_videopos_pressed(self):
@@ -171,10 +213,12 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         if self.playing:
             self.stop_playback()
             self.enable_frame_by_frame()
+            self.overlay.show()
         else:
             self.change_playback_speed(self.slider_speed.value())
             self.start_playback()
             self.disable_frame_by_frame()
+            self.overlay.hide()
 
     def enable_frame_by_frame(self):
         self.btn_previousframe.setDisabled(0)
@@ -224,15 +268,15 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
     def seek_to(self, frame):
         self.videosource.seek_to(int(frame))
-        self.load_next_frame(set_slider=False)
+        self.draw_next_frame(set_slider=False)
 
     def next_frame(self):
         self.videosource.set_playback_speed(1)
-        self.load_next_frame()
+        self.draw_next_frame()
 
     def previous_frame(self):
         self.videosource.set_playback_speed(-1)
-        self.load_next_frame()
+        self.draw_next_frame()
 
     def mouse_drag(self, _event):
         if not self.videosource.capture:
@@ -242,8 +286,8 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
         # because of padding mouse coordinates in label may not be the same as the coordinates of the mouse in the
         # actual video frame; proper coordinates need to be calculated based on pixmap padding and scaling
-        selection_x = int((_event.x() - size.x()) * self.videores[0] / size.width())
-        selection_y = int((_event.y() - size.y()) * self.videores[1] / size.height())
+        selection_x = int((_event.x() - size.x()) / self.videoscale)
+        selection_y = int((_event.y() - size.y()) / self.videoscale)
 
         if selection_x >= 0:
             self.selection.set_x(selection_x)
@@ -252,7 +296,7 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
         # only redraw frame when not playing to save unnecessary pixmap updates
         if not self.playing:
-            self.draw_frame()
+            self.update_pixmap()
 
     def mouse_scroll(self, _event):
         if not self.videosource.capture:
@@ -265,7 +309,7 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
         # only redraw frame when not playing to save unnecessary pixmap updates
         if not self.playing:
-            self.draw_frame()
+            self.update_pixmap()
 
     def set_start_frame(self):
         self.selection.set_start_frame(self.frame_pos)
