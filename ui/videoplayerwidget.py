@@ -220,7 +220,7 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
     def slider_videopos_value_changed(self):
         """Is called when the slider is dragged by the user.
         Tells the videosource to seek to the new position. The new frame is also drawn immediatly."""
-        self.videosource.seek_to(int(self.slider_videopos.value()))
+        self.videosource.set_seek_target(int(self.slider_videopos.value()))
         self.draw_next_frame(set_slider=False)
 
     def start_playback(self):

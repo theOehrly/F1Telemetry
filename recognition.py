@@ -242,9 +242,9 @@ def do_regocgnition(source, selection, outfile, uid):
         headers[i] = headers[i] + '_' + uid
     csv_file.write('; '.join(headers) + '\n')
 
-    source.seek_to(selection.start_frame - 1)  # seek to first frame which is to be processed
+    source.set_seek_target(selection.start_frame - 1)  # seek to first frame which is to be processed
     while source.capture.get(cv2.CAP_PROP_POS_FRAMES) <= selection.end_frame:
-        ret, frame = source.next_raw_frame()
+        ret, frame = source.get_raw_frame()
 
         if ret:
             roi_img = frame[y1:y2, x1:x2]
@@ -298,7 +298,7 @@ def ocr_test(source, selection):
     y2 = selection.y + selection.radius
     roi_image_size = selection.radius * 2  # roi image is always a square so x = y in terms of size
 
-    source.seek_to(selection.start_frame - 1)  # seek to first frame which is to be processed
+    source.set_seek_target(selection.start_frame - 1)  # seek to first frame which is to be processed
     while True:
         frame, *args = source.get_frame()
         print('frame:', source.capture.get(cv2.CAP_PROP_POS_FRAMES))
@@ -319,7 +319,7 @@ def ocr_test(source, selection):
         fn = int(input())
         if fn > 0:
             print('skipping')
-            source.seek_to(fn)
+            source.set_seek_target(fn)
             frame, *args = source.get_frame()
         elif fn == -1:
             break
