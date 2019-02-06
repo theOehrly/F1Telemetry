@@ -141,11 +141,11 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         # draw the current frame on th label and
         # first the currently selected region is marked using opencv
         frame = cv2.circle(copy.copy(self.frame), (self.selection.x, self.selection.y), self.selection.radius,
-                           (255, 0, 0, 255), 1, cv2.LINE_AA)  # outer circle
+                           (0, 0, 255, 255), 1, cv2.LINE_AA)  # outer circle
 
-        cv2.circle(frame, (self.selection.x, self.selection.y), 3, (255, 0, 0, 255), -1, cv2.LINE_AA)  # center point
+        cv2.circle(frame, (self.selection.x, self.selection.y), 3, (0, 0, 255, 255), -1, cv2.LINE_AA)  # center point
 
-        img = QImage(frame.data, frame.shape[1], frame.shape[0], frame.shape[1] * 3, QImage.Format_RGB888)
+        img = QImage(frame.data, frame.shape[1], frame.shape[0], frame.shape[1] * 3, QImage.Format_RGB888).rgbSwapped()
         self.lbl_display.setPixmap(QPixmap(img))
 
     def slider_videopos_pressed(self):
