@@ -191,6 +191,7 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         if not ret_val:
             return  # no frame, do nothing
         self.frame, self.frame_pos, frame_duration = ret_val
+        self.frame_timer.setInterval(int(frame_duration))
         self.update_pixmap()
 
         # update progressbar and text
