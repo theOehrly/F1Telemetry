@@ -12,6 +12,9 @@ import threading
 
 
 class VideoSource:
+    """OpenCV based videosource that provides single frames.
+    Features: variable playback speed (also reverse), frame by frame mode, seek to a specific frame
+    Frames are read in a seperate thread."""
     def __init__(self, videofile=None):
         self.capture = None
 
@@ -43,6 +46,7 @@ class VideoSource:
         # frame skipping therefore it is calculated by the videosource
 
     def open_file(self, filepath):
+        """Opens the the provided file. Fails silently if not successful."""
         self.capture = cv2.VideoCapture(filepath)  # video source
         if not self.capture.get(cv2.CAP_PROP_FRAME_COUNT):
             self.capture.release()
@@ -53,6 +57,7 @@ class VideoSource:
         self.preload_framebuffer()
 
     def load_source_info(self):
+        """Loads required video info when a new file is opened. (internal)"""
         if self.capture:
             # some information about the source file; values are constants
             self.source_fps = self.capture.get(cv2.CAP_PROP_FPS)  # video fps
@@ -63,31 +68,26 @@ class VideoSource:
             self.duration = self.total_frames / self.source_fps  # video duration
 
     def top_up_buffer(self):
+        """Adds a new frame to the frame buffer. (internal)"""
         if not self.capture:
             return
 
-        self.set_position()  # takes care of seeking, frame skipping and reverse playback
+        self.modify_capture_position()  # takes care of seeking, frame skipping and reverse playback
         frame_pos = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
         ok, frame = self.capture.read()
         if ok:
             self.frame_buffer.appendleft((frame, frame_pos, self.playback_frame_duration))
+            # every frame is added together with info about it's position and the calculated duration
         else:
             return None
 
     def preload_framebuffer(self):
+        """Prefills the frame buffer so the required size (i.e. after seeking). (internal)"""
         while len(self.frame_buffer) < self.frame_buffer_length:
             self.top_up_buffer()
 
-    def get_frame(self):
-        if self.buffer_reload_thread:
-            self.buffer_reload_thread.join()
-        self.buffer_reload_thread = threading.Thread(target=self.top_up_buffer)
-        self.buffer_reload_thread.start()
-        # self.top_up_buffer()  # use instead of threaded version above if needed for debugging
-        if self.frame_buffer:
-            return self.frame_buffer.pop()
-
-    def set_position(self):
+    def modify_capture_position(self):
+        """Handles advanced playback functionality like reverse, seeking and frame skipping. (internal)"""
         if self.seek_target:
             # set new position
             self.capture.set(cv2.CAP_PROP_POS_FRAMES, self.seek_target)
@@ -112,17 +112,31 @@ class VideoSource:
             for _ in range(self.frame_skip_factor-1):
                 self.capture.read()
 
-    def next_raw_frame(self):
+    def get_frame(self):
+        """Returns the next frame from the buffer together wit info about it's positon and duration."""
+        if self.buffer_reload_thread:
+            self.buffer_reload_thread.join()
+        self.buffer_reload_thread = threading.Thread(target=self.top_up_buffer)
+        self.buffer_reload_thread.start()
+        # self.top_up_buffer()  # use instead of threaded version above if needed for debugging
+        if self.frame_buffer:
+            return self.frame_buffer.pop()
+
+    def get_raw_frame(self):
+        """Returns next frame directly from source (non threaded!). Speed, direction and seek targets are ignored!"""
         return self.capture.read()
 
-    def seek_to(self, frame):
-        # self.seek_target = frame * 1000 / self.source_fps
+    def set_seek_target(self, frame):
+        """Sets a seek target. Actual seeking of the capture is done when the next frame is loaded in to the buffer."""
         self.seek_target = frame
 
     def set_playback_speed(self, speed):
+        """Sets a new playback speed.
+        Also handles reversing (if necessary) and frame skipping for playback speeds greater than times two."""
+
         dir_old_new = speed * self.playback_direction
         # if old and new are the same direction this results in a positive value
-        # if direction change teh value is negative
+        # if direction changes the value is negative
 
         if speed > 0:
             self.playback_direction = 1
@@ -146,4 +160,5 @@ class VideoSource:
         self.playback_frame_duration = int(1000 / (self.source_fps * abs(speed))) * self.frame_skip_factor
 
     def release(self):
+        """Releases the capture."""
         self.capture.release()
