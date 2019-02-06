@@ -45,6 +45,7 @@ class VideoSource:
     def open_file(self, filepath):
         self.capture = cv2.VideoCapture(filepath)  # video source
         if not self.capture.get(cv2.CAP_PROP_FRAME_COUNT):
+            self.capture.release()
             self.capture = None
             return  # if ain't got no frames it ain't no videofile
         self.load_source_info()
