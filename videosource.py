@@ -1,6 +1,8 @@
 import cv2
 import collections
 import threading
+from PyQt5.QtGui import QPixmap, QImage
+import time
 
 # Video source class - the following actions are supported
 #  - forward and reverse playback
@@ -20,9 +22,9 @@ class VideoSource:
 
         # some information about the source file; values are constants
         self.source_fps = None  # video fps
-        self.source_frame_duration = None # duration of one frame
+        self.source_frame_duration = None  # duration of one frame
         self.total_frames = None
-        self.duration = None # video duration
+        self.duration = None  # video duration
 
         if videofile:
             self.open_file(videofile)
@@ -34,7 +36,7 @@ class VideoSource:
         # no frames get skipped or lost, as the deque can increase length
         # the code supports longer buffer length but currently this leads to a slugish user
         # experience as most imortantly playback speed changes are not happening instantaneous then
-        self.frame_buffer_length = 1
+        self.frame_buffer_length = 5
         self.buffer_reload_thread = None
 
         # playback controls
@@ -45,27 +47,43 @@ class VideoSource:
         # playback_frame_duration is used by the GUI to determine frame timing. It also changes depending on
         # frame skipping therefore it is calculated by the videosource
 
+        self.continous_buffer_thread = None
+
     def open_file(self, filepath):
-        """Opens the the provided file. Fails silently if not successful."""
-        self.capture = cv2.VideoCapture(filepath)  # video source
-        if not self.capture.get(cv2.CAP_PROP_FRAME_COUNT):
-            self.capture.release()
-            self.capture = None
-            return  # if ain't got no frames it ain't no videofile
-        self.load_source_info()
-        self.frame_buffer.clear()
-        self.preload_framebuffer()
+        """Opens the the provided file."""
+        try:
+            if self.capture:
+                self.release()
+                self.continous_buffer_thread.join()
+
+            self.capture = cv2.VideoCapture(filepath)  # video source
+            if not self.capture.get(cv2.CAP_PROP_FRAME_COUNT):
+                self.capture.release()
+                self.capture = None
+                return  # if ain't got no frames it ain't no videofile
+            self.load_source_info()
+            self.frame_buffer.clear()
+            self.continous_buffer_thread = threading.Thread(target=self.continious_buffer)
+            self.continous_buffer_thread.start()
+        except Exception as e:
+            print('Error while opening file: ', e)
 
     def load_source_info(self):
         """Loads required video info when a new file is opened. (internal)"""
         if self.capture:
             # some information about the source file; values are constants
             self.source_fps = self.capture.get(cv2.CAP_PROP_FPS)  # video fps
-            print(self.source_fps)
             self.source_frame_duration = int(1000 / self.source_fps)  # duration of one frame
             self.playback_frame_duration = self.source_frame_duration
             self.total_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
             self.duration = self.total_frames / self.source_fps  # video duration
+
+    def continious_buffer(self):
+        while self.capture:
+            if len(self.frame_buffer) < self.frame_buffer_length:
+                self.top_up_buffer()
+            else:
+                time.sleep(0.1)
 
     def top_up_buffer(self):
         """Adds a new frame to the frame buffer. (internal)"""
@@ -76,15 +94,11 @@ class VideoSource:
         frame_pos = self.capture.get(cv2.CAP_PROP_POS_FRAMES)
         ok, frame = self.capture.read()
         if ok:
-            self.frame_buffer.appendleft((frame, frame_pos, self.playback_frame_duration))
+            img = QImage(frame.data, frame.shape[1], frame.shape[0], frame.shape[1] * 3,
+                         QImage.Format_RGB888).rgbSwapped()
+            pixmap = QPixmap(img)
+            self.frame_buffer.appendleft((pixmap, frame_pos, self.playback_frame_duration))
             # every frame is added together with info about it's position and the calculated duration
-        else:
-            return None
-
-    def preload_framebuffer(self):
-        """Prefills the frame buffer so the required size (i.e. after seeking). (internal)"""
-        while len(self.frame_buffer) < self.frame_buffer_length:
-            self.top_up_buffer()
 
     def modify_capture_position(self):
         """Handles advanced playback functionality like reverse, seeking and frame skipping. (internal)"""
@@ -114,11 +128,6 @@ class VideoSource:
 
     def get_frame(self):
         """Returns the next frame from the buffer together wit info about it's positon and duration."""
-        if self.buffer_reload_thread:
-            self.buffer_reload_thread.join()
-        self.buffer_reload_thread = threading.Thread(target=self.top_up_buffer)
-        self.buffer_reload_thread.start()
-        # self.top_up_buffer()  # use instead of threaded version above if needed for debugging
         if self.frame_buffer:
             return self.frame_buffer.pop()
 
@@ -153,7 +162,6 @@ class VideoSource:
                 seek_target = self.capture.get(cv2.CAP_PROP_POS_FRAMES) + self.playback_direction
             self.seek_target = seek_target if seek_target >= 0 else 0
             self.frame_buffer.clear()
-            self.preload_framebuffer()
 
         self.frame_skip_factor = int(abs(speed)) if abs(speed) >= 1 else 1
         # used to skip frames so that playback framerate stays within one to two times source fps
@@ -162,3 +170,4 @@ class VideoSource:
     def release(self):
         """Releases the capture."""
         self.capture.release()
+        self.capture = None  # set to None, so continous buffer thread terminates itself

@@ -31,6 +31,10 @@ class MainUI(QMainWindow, Ui_MainWindow):
             self.videoplayer.resize(_event.size())
         return False
 
+    def closeEvent(self, *args, **kwargs):
+        self.videoplayer.videosource.release()
+        super().closeEvent(*args, **kwargs)
+
     def open_infile_video(self):
         filepath, _ = QFileDialog.getOpenFileName(self, "Open Videofile", "", "Video files (*.*)")
         print(filepath)

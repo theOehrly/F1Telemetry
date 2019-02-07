@@ -1,7 +1,7 @@
 import cv2
 
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QImage, QPixmap, QResizeEvent, QInputEvent, QPainter, QPen, QPalette
+from PyQt5.QtGui import QResizeEvent, QInputEvent, QPainter, QPen, QPalette
 from PyQt5 import QtCore
 
 from ui.ui_videoplayerwidget import Ui_VideoPlayer
@@ -58,8 +58,10 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
         self.playing = False
         self.was_playing = False
+        self.singleframe = False
         self.frame = None
         self.frame_pos = 0
+        self.frame_duration = 0
 
         # a new frame is drawn every time the timer times out
         # the timer interval is set depending on the frame duration calculated for each frame by the videosource
@@ -71,11 +73,6 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
         self.init_ui()
         self.show()
-
-    def closeEvent(self, *args, **kwargs):
-        """Automatically fired when closing window to properly release videosource."""
-        self.videosource.release()
-        super().closeEvent(*args, **kwargs)
 
     def init_ui(self):
         """Called once when started to connect functions to all buttons and setup mouse tracking on display lable."""
@@ -130,6 +127,7 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
             self.selection.set_radius(self.videores[1] / 6)
 
             # draw first frame, scale it properly and enable control buttons
+            self.singleframe = True
             self.draw_next_frame()
             self.update_display_margins()
             self.enable_vidctrl_btns()
@@ -186,12 +184,21 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
     def draw_next_frame(self, set_slider=True):
         """Fetches the next frame from the videosource, call for a pixmap update and updates playback progress."""
-        # get next frame and draw it on label
-        ret_val = self.videosource.get_frame()
-        if not ret_val:
+        if self.singleframe:
+            # function may need to briefly wait for the videosource to fill up its buffer after a change of direction
+            # only wait when the user requests a singel frame
+            while not self.videosource.frame_buffer:
+                continue
+            self.singleframe = False
+
+        ret = self.videosource.get_frame()
+        if not ret:
             return  # no frame, do nothing
-        self.frame, self.frame_pos, frame_duration = ret_val
-        self.frame_timer.setInterval(int(frame_duration))
+
+        self.frame, self.frame_pos, frame_duration = ret
+        if frame_duration != self.frame_duration:
+            self.frame_timer.setInterval(int(frame_duration))
+            self.frame_duration = frame_duration
         self.update_pixmap()
 
         # update progressbar and text
@@ -203,9 +210,7 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
     def update_pixmap(self):
         """Draws the current self.frame on the display label."""
-        img = QImage(self.frame.data, self.frame.shape[1], self.frame.shape[0], self.frame.shape[1] * 3,
-                     QImage.Format_RGB888).rgbSwapped()
-        self.lbl_display.setPixmap(QPixmap(img))
+        self.lbl_display.setPixmap(self.frame)
 
     def slider_videopos_pressed(self):
         """Is called when the slider is clicked. The current playback state is saved and playback is stopped."""
@@ -297,11 +302,13 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
     def next_frame(self):
         """Called by next frame button in frame by frame mode."""
+        self.singleframe = True
         self.videosource.set_playback_speed(1)
         self.draw_next_frame()
 
     def previous_frame(self):
         """Called by previous frame button in frame by frame mode."""
+        self.singleframe = True
         self.videosource.set_playback_speed(-1)
         self.draw_next_frame()
 
