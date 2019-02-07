@@ -178,5 +178,6 @@ class VideoSource:
 
     def release(self):
         """Releases the capture."""
-        self.capture.release()
+        if self.capture:
+            self.capture.release()
         self.capture = None  # set to None, so continous buffer thread terminates itself
