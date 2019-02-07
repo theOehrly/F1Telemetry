@@ -239,12 +239,12 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         self.playing = False
 
     def playpause(self):
-        """Pauses od resumes playback depending on current state and enables/disables advanced functions accordingly"""
+        """Pauses or resumes playback depending on current state and enables/disables advanced functions accordingly"""
         if self.playing:
             self.stop_playback()
             self.enable_frame_by_frame()
             self.overlay.show()
-        else:
+        elif self.videosource.capture:
             self.change_playback_speed(self.slider_speed.value())
             self.start_playback()
             self.disable_frame_by_frame()
