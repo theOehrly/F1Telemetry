@@ -129,7 +129,16 @@ class VideoSource:
     def get_frame(self):
         """Returns the next frame from the buffer together wit info about it's positon and duration."""
         if self.frame_buffer:
-            return self.frame_buffer.pop()
+            fd = self.frame_buffer.pop()
+            # If playbackspeed is slower than realtime, the precalculated frame duration is substituted with the current
+            # frame duration. At slow speeds frames spent rather long time in the buffer, so the calculated timing
+            # may no longer be correct if the user changed the playback speed in between.
+            # Substitution is not done at higher speeds as it might mess up transitions when frame skipping. This means
+            # that playback speed changes are technically not instantaneous but lag behind a few frames.
+            if fd[2] > self.source_frame_duration:
+                return fd[0], fd[1], self.playback_frame_duration
+            else:
+                return fd
 
     def get_raw_frame(self):
         """Returns next frame directly from source (non threaded!). Speed, direction and seek targets are ignored!"""
