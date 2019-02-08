@@ -23,7 +23,11 @@ class MainUI(QMainWindow, Ui_MainWindow):
 
         # file dialogs and run button
         self.btn_openin_video.clicked.connect(self.open_infile_video)
-        self.lineedit_infile.returnPressed.connect(self.open_infile_video_from_enter)
+        self.lineedit_infile.returnPressed.connect(self.open_infile_video_from_lineedit)
+
+        self.btn_chooseout_video.clicked.connect(self.set_outfile_video)
+        self.lineedit_output.returnPressed.connect(self.set_outfile_video_from_lineedit)
+
         self.show()
 
     def eventFilter(self, _object, _event):
@@ -36,7 +40,7 @@ class MainUI(QMainWindow, Ui_MainWindow):
         self.videoplayer.videosource.release()
         super().closeEvent(*args, **kwargs)
 
-    def open_infile_video_from_enter(self):
+    def open_infile_video_from_lineedit(self):
         self.videoplayer.open_file(self.lineedit_infile.text())
 
     def open_infile_video(self):
@@ -44,3 +48,8 @@ class MainUI(QMainWindow, Ui_MainWindow):
         if filepath:
             self.lineedit_infile.setText(str(filepath))
             self.videoplayer.open_file(filepath)
+
+    def set_outfile_video(self):
+        filepath, _ = QFileDialog.getSaveFileName(self, "Save Output as", "", "*.csv")
+        if filepath:
+            self.lineedit_output.setText(str(filepath))
