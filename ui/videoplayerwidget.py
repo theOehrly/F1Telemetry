@@ -187,7 +187,9 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         if self.singleframe:
             # function may need to briefly wait for the videosource to fill up its buffer after a change of direction
             # only wait when the user requests a singel frame
-            while not self.videosource.frame_buffer:
+            # also only wait if we are not at the end of the video
+            while not self.videosource.frame_buffer and not \
+                    self.videosource.total_frames == self.videosource.capture.get(cv2.CAP_PROP_POS_FRAMES):
                 continue
             self.singleframe = False
 

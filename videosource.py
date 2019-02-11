@@ -79,11 +79,23 @@ class VideoSource:
             self.duration = self.total_frames / self.source_fps  # video duration
 
     def continious_buffer(self):
-        while self.capture:
-            if len(self.frame_buffer) < self.frame_buffer_length:
-                self.top_up_buffer()
-            else:
-                time.sleep(0.1)
+        try:
+            while self.capture:
+                if len(self.frame_buffer) < self.frame_buffer_length:
+                    # buffer has not as many frames as it should have
+                    if not (self.capture.get(cv2.CAP_PROP_POS_FRAMES) == self.total_frames and
+                            self.playback_direction > 0):
+                            # if we're at the end and should play forward don't top up the buffer
+                        self.top_up_buffer()
+                    elif self.seek_target and not self.seek_target == self.total_frames:
+                        # BUT, if we're at the end and a seek target is set to something different than the end do it
+                        self.top_up_buffer()
+                    else:
+                        time.sleep(0.1)
+                else:
+                    time.sleep(0.1)
+        except Exception as e:
+            print(e)
 
     def top_up_buffer(self):
         """Adds a new frame to the frame buffer. (internal)"""
@@ -139,6 +151,7 @@ class VideoSource:
                 return fd[0], fd[1], self.playback_frame_duration
             else:
                 return fd
+        return None
 
     def get_raw_frame(self):
         """Returns next frame directly from source (non threaded!). Speed, direction and seek targets are ignored!"""
