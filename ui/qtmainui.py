@@ -67,7 +67,7 @@ class MainUI(QMainWindow, Ui_MainWindow):
 
         self.btn_chooseout_video.clicked.connect(self.set_outfile_video)
 
-        self.lineedi_uid.installEventFilter(self)
+        self.lineedit_uid.installEventFilter(self)
 
         self.btn_run_ocr.clicked.connect(self.run_ocr)
 
@@ -77,7 +77,7 @@ class MainUI(QMainWindow, Ui_MainWindow):
         if _event.type() == QResizeEvent.Resize and _object is self.playercontainer:
             # resize videoplayer widget
             self.videoplayer.resize(_event.size())
-        elif _event.type() == QMouseEvent.MouseButtonRelease and _object is self.lineedi_uid:
+        elif _event.type() == QMouseEvent.MouseButtonRelease and _object is self.lineedit_uid:
             self.reset_ocr_uid_warning()
             return True
         return False
@@ -117,10 +117,10 @@ class MainUI(QMainWindow, Ui_MainWindow):
                 self.error = "OCR_NOOUT"
                 return
 
-            uid = self.lineedi_uid.text()
+            uid = self.lineedit_uid.text()
             if not uid:
-                self.lineedi_uid.setText('Enter UID!')
-                self.lineedi_uid.setStyleSheet("QLineEdit{background:red;}")
+                self.lineedit_uid.setText('Enter UID!')
+                self.lineedit_uid.setStyleSheet("QLineEdit{background:red;}")
                 self.error = 'OCR_NOUID'
                 return
 
@@ -140,8 +140,8 @@ class MainUI(QMainWindow, Ui_MainWindow):
 
     def reset_ocr_uid_warning(self):
         if self.error == 'OCR_NOUID':
-            self.lineedi_uid.setStyleSheet("")
-            self.lineedi_uid.setText("")
+            self.lineedit_uid.setStyleSheet("")
+            self.lineedit_uid.setText("")
             self.error = None
 
     def reset_ocr_vid_warning(self):
