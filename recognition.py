@@ -223,71 +223,86 @@ def do_ocr_gear(img, data, index, size):
     data[index] = value
 
 
-def do_regocgnition(source, selection, outfile, uid):
-    timecode_offset = selection.zero_frame * (1000 / source.source_fps)  # set timecode for first frame
+def recognize(filename, outfile, uid, selection, parentQThread):
+    try:
+        capture = cv2.VideoCapture(filename)
 
-    # create roi image
-    x1 = selection.x - selection.radius
-    x2 = selection.x + selection.radius
-    y1 = selection.y - selection.radius
-    y2 = selection.y + selection.radius
-    roi_image_size = selection.radius * 2  # roi image is always a square so x = y in terms of size
+        timecode_offset = selection.zero_frame * (1000 / capture.get(cv2.CAP_PROP_FPS))  # set timecode for first frame
 
-    # roi_img = base_image[y1:y2, x1:x2]
+        # create roi image
+        x1 = selection.x - selection.radius
+        x2 = selection.x + selection.radius
+        y1 = selection.y - selection.radius
+        y2 = selection.y + selection.radius
+        roi_image_size = selection.radius * 2  # roi image is always a square so x = y in terms of size
 
-    csv_file = open(outfile, "w")
-    # write headers
-    headers = ['speed', 'rpm', 'gear', 'brake', 'throttle', 'time']
-    for i in range(len(headers)):
-        headers[i] = headers[i] + '_' + uid
-    csv_file.write('; '.join(headers) + '\n')
+        # roi_img = base_image[y1:y2, x1:x2]
 
-    source.set_seek_target(selection.start_frame - 1)  # seek to first frame which is to be processed
-    while source.capture.get(cv2.CAP_PROP_POS_FRAMES) <= selection.end_frame:
-        ret, frame = source.get_raw_frame()
+        csv_file = open(outfile, "w")
+        # write headers
+        headers = ['speed', 'rpm', 'gear', 'brake', 'throttle', 'time']
+        for i in range(len(headers)):
+            headers[i] = headers[i] + '_' + uid
+        csv_file.write('; '.join(headers) + '\n')
 
-        if ret:
-            roi_img = frame[y1:y2, x1:x2]
+        cnt = 0
 
-            label_subtraction_mask, label_ocr_mask = create_label_masks(roi_img)
+        # seek to first frame which is to be processed
+        capture.set(cv2.CAP_PROP_POS_FRAMES, selection.start_frame - 1)
+        while capture.get(cv2.CAP_PROP_POS_FRAMES) <= selection.end_frame and not parentQThread.STOP:
+            ret, frame = capture.read()
 
-            # do recognition threaded
-            ocr_values = [0, 0, 0, 0, 0]
-            # t1 = threading.Thread(target=do_ocr_speed, args=[label_ocr_mask, ocr_values, 0, roi_image_size])
-            # t2 = threading.Thread(target=do_ocr_rpm, args=[label_ocr_mask, ocr_values, 1, roi_image_size])
-            # t3 = threading.Thread(target=do_ocr_gear, args=[label_ocr_mask, ocr_values, 2, roi_image_size])
-            # t4 = threading.Thread(target=read_brake, args=[roi_img, roi_image_size, ocr_values, 3])
-            # t5 = threading.Thread(target=read_throttle,
-            #                       args=[roi_img, roi_image_size, label_subtraction_mask, ocr_values, 4])
-            # t1.start()
-            # t2.start()
-            # t3.start()
-            # t4.start()
-            # t5.start()
-            # t1.join()
-            # t2.join()
-            # t3.join()
-            # t4.join()
-            # t5.join()
+            if ret:
+                roi_img = frame[y1:y2, x1:x2]
 
-            do_ocr_speed(label_ocr_mask, ocr_values, 0, roi_image_size)
+                label_subtraction_mask, label_ocr_mask = create_label_masks(roi_img)
 
-            # print(ocr_values)
+                # do recognition threaded
+                ocr_values = [0, 0, 0, 0, 0]
+                # t1 = threading.Thread(target=do_ocr_speed, args=[label_ocr_mask, ocr_values, 0, roi_image_size])
+                # t2 = threading.Thread(target=do_ocr_rpm, args=[label_ocr_mask, ocr_values, 1, roi_image_size])
+                # t3 = threading.Thread(target=do_ocr_gear, args=[label_ocr_mask, ocr_values, 2, roi_image_size])
+                # t4 = threading.Thread(target=read_brake, args=[roi_img, roi_image_size, ocr_values, 3])
+                # t5 = threading.Thread(target=read_throttle,
+                #                       args=[roi_img, roi_image_size, label_subtraction_mask, ocr_values, 4])
+                # t1.start()
+                # t2.start()
+                # t3.start()
+                # t4.start()
+                # t5.start()
+                # t1.join()
+                # t2.join()
+                # t3.join()
+                # t4.join()
+                # t5.join()
 
-            # convert data to str for writing to file
-            for i in range(len(ocr_values)):
-                ocr_values[i] = str(ocr_values[i])
+                do_ocr_speed(label_ocr_mask, ocr_values, 0, roi_image_size)
 
-            timecode = (source.capture.get(cv2.CAP_PROP_POS_MSEC) - timecode_offset) / 1000
-            csv_file.write('; '.join(ocr_values) + '; ' + str(timecode) + '\n')
+                # print(ocr_values)
 
-            # print(timecode)
+                # convert data to str for writing to file
+                for i in range(len(ocr_values)):
+                    ocr_values[i] = str(ocr_values[i])
 
-        else:
-            break
+                timecode = (capture.get(cv2.CAP_PROP_POS_MSEC) - timecode_offset) / 1000
+                csv_file.write('; '.join(ocr_values) + '; ' + str(timecode) + '\n')
 
-    cv2.destroyAllWindows()
-    csv_file.close()
+                # print(timecode)
+
+                cnt += 1
+                print(cnt)
+                parentQThread.update_progress(cnt)
+
+            else:
+                break
+
+        cv2.destroyAllWindows()
+        csv_file.close()
+        capture.release()
+        parentQThread.set_finished()
+
+    except Exception as e:
+        print(e)
 
 
 def ocr_test(source, selection):

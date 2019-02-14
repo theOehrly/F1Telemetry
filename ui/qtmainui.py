@@ -1,13 +1,42 @@
 import sys
 
-from PyQt5.QtWidgets import QMainWindow, QFileDialog
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QProgressDialog
 from PyQt5.QtGui import QResizeEvent, QMouseEvent
 from PyQt5.Qt import QApplication
+from PyQt5.QtCore import QThread, pyqtSignal
 
 from ui.ui_mainwindow import Ui_MainWindow
 from ui.videoplayerwidget import VideoPlayerWidget
 
 from datastruct import SelectionData
+import recognition
+
+
+class OCRWorker(QThread):
+    progressUpdate = pyqtSignal(int)
+    finished = pyqtSignal(bool)
+    STOP = False
+
+    def __init__(self, fname, ofile, uid, selection):
+        super().__init__()
+
+        self.filename = fname
+        self.outfile = ofile
+        self.uid = uid
+        self.selection = selection
+
+    def run(self):
+        recognition.recognize(self.filename, self.outfile, self.uid, self.selection, self)
+
+    def update_progress(self, frame):
+        self.progressUpdate.emit(frame)
+
+    def set_finished(self):
+        self.finished.emit(True)
+
+    def quit(self):
+        self.STOP = True
+        super().quit()
 
 
 class MainUI(QMainWindow, Ui_MainWindow):
@@ -22,6 +51,9 @@ class MainUI(QMainWindow, Ui_MainWindow):
         # add videoplayer widget into prepared placeholder
         self.videoplayer = VideoPlayerWidget(self.playercontainer, self.selection_data)
         self.playercontainer.setMinimumSize(self.videoplayer.minimumSize())
+
+        self.ocr_progress_dialog = None
+        self.ocr_worker = None
 
         self.init_ui()
 
@@ -77,17 +109,34 @@ class MainUI(QMainWindow, Ui_MainWindow):
                 self.btn_openin_video.setStyleSheet("QPushButton{background:red;}")
                 self.error = "OCR_NOVID"
                 return
+            filename = self.lineedit_infile.text()
 
-            if not self.lineedit_output.text():
+            outfile = self.lineedit_output.text()
+            if not outfile:
                 self.btn_chooseout_video.setStyleSheet("QPushButton{background:red;}")
                 self.error = "OCR_NOOUT"
                 return
 
-            elif not self.lineedi_uid.text():
+            uid = self.lineedi_uid.text()
+            if not uid:
                 self.lineedi_uid.setText('Enter UID!')
                 self.lineedi_uid.setStyleSheet("QLineEdit{background:red;}")
                 self.error = 'OCR_NOUID'
                 return
+
+            # show progress bar
+            n_frames = self.selection_data.end_frame - self.selection_data.start_frame
+            self.ocr_progress_dialog = QProgressDialog('Processing Frames...', 'Cancel', 0, n_frames, self)
+            self.ocr_progress_dialog.setMinimumWidth(400)
+            self.ocr_progress_dialog.setWindowTitle('OCR Running')
+            self.ocr_progress_dialog.canceled.connect(self.cancel_ocr)
+            self.ocr_progress_dialog.show()
+
+            # run ocr in seperate QThread
+            self.ocr_worker = OCRWorker(filename, outfile, uid, self.selection_data)
+            self.ocr_worker.progressUpdate.connect(self.update_ocr_progress)
+            self.ocr_worker.finished.connect(self.update_ocr_finished)
+            self.ocr_worker.start()
 
     def reset_ocr_uid_warning(self):
         if self.error == 'OCR_NOUID':
@@ -104,6 +153,17 @@ class MainUI(QMainWindow, Ui_MainWindow):
         if self.error == "OCR_NOOUT":
             self.btn_chooseout_video.setStyleSheet("")
             self.error = None
+
+    def update_ocr_progress(self, frame):
+        self.ocr_progress_dialog.setValue(frame)
+
+    def update_ocr_finished(self):
+        self.ocr_progress_dialog.reset()
+        self.ocr_progress_dialog = None
+
+    def cancel_ocr(self):
+        self.ocr_worker.quit()
+        self.ocr_worker.wait()
 
 
 if __name__ == '__main__':
