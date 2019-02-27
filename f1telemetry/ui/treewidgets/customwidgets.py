@@ -1,10 +1,10 @@
 from PyQt5.QtWidgets import QWidget
 
-from f1telemetry.ui.treewidgets import spikesbychange, base
+from f1telemetry.ui.treewidgets import spikesbychange, base, smoothing
 from f1telemetry.postprocessing2 import SpikesByChange
 
 
-class TreeBaseWidget(QWidget, base.Ui_TreeBaseWidget):
+class BaseWidget(QWidget, base.Ui_BaseWidget):
     def __init__(self, treeelement):
         super().__init__()
         self.treeelement = treeelement
@@ -25,7 +25,7 @@ class TreeBaseWidget(QWidget, base.Ui_TreeBaseWidget):
         self.datasetDropdown.setCurrentText(self.treeelement.dataset.getActiveTreeName())
 
 
-class SpikesByChangeWidget(QWidget, spikesbychange.Ui_Widget):
+class SpikesByChangeWidget(QWidget, spikesbychange.Ui_SpikesByChange):
     def __init__(self, treeelement):
         super().__init__()
         self.treeelement = treeelement

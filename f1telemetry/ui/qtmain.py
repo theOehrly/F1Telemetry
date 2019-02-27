@@ -8,7 +8,7 @@ import pyqtgraph as qtg
 
 from f1telemetry.ui.mainwindow import Ui_MainWindow
 from f1telemetry.ui.videoplayerwidget import VideoPlayerWidget
-from f1telemetry.ui.treewidgets.customwidgets import TreeBaseWidget, SpikesByChangeWidget
+from f1telemetry.ui.treewidgets.customwidgets import BaseWidget, SpikesByChangeWidget
 
 from f1telemetry.datastruct import SelectionData, InteractiveDataSet
 from f1telemetry import recognition
@@ -217,7 +217,7 @@ class F1MainWindow(QMainWindow, Ui_MainWindow):
 
             csv_in.close()
 
-        self.dataset = InteractiveDataSet(self, x, ysets, headers[1:], filename, TreeBaseWidget)
+        self.dataset = InteractiveDataSet(self, x, ysets, headers[1:], filename, BaseWidget)
         self.dataset.activeTreeChanged.connect(self.reload_all)
         self.reload_all()
 
