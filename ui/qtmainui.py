@@ -1,20 +1,24 @@
 import sys
+import csv
 
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QProgressDialog
 from PyQt5.QtGui import QResizeEvent, QMouseEvent
 from PyQt5.Qt import QApplication
 from PyQt5.QtCore import QThread, pyqtSignal
 
+import pyqtgraph as qtg
+
 from ui.ui_mainwindow import Ui_MainWindow
 from ui.videoplayerwidget import VideoPlayerWidget
+from ui.f1customwidgets import TreeBaseWidget, SpikesByChangeWidget
 
-from datastruct import SelectionData
+from datastruct import SelectionData, InteractiveDataSet
 import recognition
 
 
 class OCRWorker(QThread):
     progressUpdate = pyqtSignal(int)
-    finished = pyqtSignal(bool)
+    finished = pyqtSignal()
     STOP = False
 
     def __init__(self, fname, ofile, uid, selection):
@@ -32,7 +36,7 @@ class OCRWorker(QThread):
         self.progressUpdate.emit(frame)
 
     def set_finished(self):
-        self.finished.emit(True)
+        self.finished.emit()
 
     def quit(self):
         self.STOP = True
@@ -44,7 +48,8 @@ class MainUI(QMainWindow, Ui_MainWindow):
         super().__init__()
 
         self.setupUi(self)
-        self.selection_data = SelectionData()
+        self.selection_data = SelectionData()  # holds information about region of interest and start/end/zero time
+        self.dataset = None  # interactive dataset used for plotting/data processing
 
         self.error = None
 
@@ -55,9 +60,20 @@ class MainUI(QMainWindow, Ui_MainWindow):
         self.ocr_progress_dialog = None
         self.ocr_worker = None
 
+        self.data_processing_worker = None
+
+        self.auxPlotViewRegion = qtg.LinearRegionItem()
+        self.auxPlotItem = None
+        self.mainPlotItem = None
+
         self.init_ui()
 
+        self.open_csv_file()
+
     def init_ui(self):
+        # ## VIDEO PLAYER ## #
+        # ####################
+
         # install eventfilter on playercontainer
         self.playercontainer.installEventFilter(self)
 
@@ -70,6 +86,18 @@ class MainUI(QMainWindow, Ui_MainWindow):
         self.lineedit_uid.installEventFilter(self)
 
         self.btn_run_ocr.clicked.connect(self.run_ocr)
+
+        # ## DATA PROCESSING ## #
+        # #######################
+
+        self.auxPlotWidget.addItem(self.auxPlotViewRegion)
+        self.auxPlotWidget.setMouseEnabled(x=False, y=False)
+        self.mainPlotWidget.setMouseEnabled(y=False)
+
+        self.auxPlotViewRegion.sigRegionChanged.connect(self.update_main_plot)
+        self.mainPlotWidget.sigXRangeChanged.connect(self.update_aux_plot_view_region)
+
+        self.toolSpikeRateButton.clicked.connect(self.tool_spike_rate)
 
         self.show()
 
@@ -85,6 +113,8 @@ class MainUI(QMainWindow, Ui_MainWindow):
     def closeEvent(self, *args, **kwargs):
         self.videoplayer.videosource.release()
         super().closeEvent(*args, **kwargs)
+
+    # ###### VIDEO PLAYER ######## #
 
     def open_infile_video_from_lineedit(self):
         self.videoplayer.open_file(self.lineedit_infile.text())
@@ -164,6 +194,77 @@ class MainUI(QMainWindow, Ui_MainWindow):
     def cancel_ocr(self):
         self.ocr_worker.quit()
         self.ocr_worker.wait()
+
+    # ###### DATA PROCESSING ######## #
+
+    def open_csv_file(self):
+        filename = 'testruns/new_file_format.csv'
+
+        x = list()
+        ysets = list()
+
+        with open(filename, 'r') as csv_in:
+            reader = csv.reader(csv_in, delimiter=';')
+            headers = reader.__next__()  # first line are column names
+            num_datasets = len(headers) - 1  # minus one because one column is the "x axis"
+
+            for _ in range(num_datasets):  # add the required number of sublists to ysets (one per dataset)
+                ysets.append(list())
+
+            for row in reader:
+                x.append(float(row[0]))  # copy the x value into it's list
+
+                for i in range(num_datasets):
+                    ysets[i].append(float(row[i+1]))  # copy each y value into it's respective list
+
+            csv_in.close()
+
+        self.dataset = InteractiveDataSet(self, x, ysets, headers[1:], filename, TreeBaseWidget)
+        self.dataset.activeTreeChanged.connect(self.reload_all)
+        self.reload_all()
+
+    def reload_all(self):
+        # remove all items that are currently shown in the tree tool box
+        for _ in range(self.treeToolBox.count()):
+            self.treeToolBox.removeItem(0)
+
+        # add al items of the newly selected tree
+        for element in self.dataset.active.elements:
+            self.treeToolBox.addItem(element.widget, element.name)
+
+        self.redraw_plot()
+
+    def redraw_plot(self):
+        if self.mainPlotItem and self.auxPlotItem:
+            self.mainPlotWidget.removeItem(self.mainPlotItem)
+            self.auxPlotWidget.removeItem(self.auxPlotItem)
+
+        x, y = self.dataset.active.getNewest().getData()
+
+        ymaximum = max(y) * 1.1
+        xmaximum = max(x)
+        self.auxPlotItem = self.auxPlotWidget.plot(x, y)
+        self.auxPlotWidget.setLimits(xMin=0, xMax=xmaximum, yMin=0, yMax=ymaximum)
+        self.auxPlotViewRegion.setBounds((0, xmaximum))
+
+        self.mainPlotItem = self.mainPlotWidget.plot(x, y)
+        self.mainPlotWidget.setLimits(xMin=0, xMax=xmaximum, yMin=0, yMax=ymaximum)
+
+        self.update_main_plot()
+
+    def update_aux_plot_view_region(self):
+        self.auxPlotViewRegion.setRegion(self.mainPlotWidget.getViewBox().viewRange()[0])
+
+    def update_main_plot(self):
+        self.mainPlotWidget.setXRange(*self.auxPlotViewRegion.getRegion(), padding=0)
+
+    def tool_spike_rate(self):
+        element = self.dataset.active.newElementFromNewest('Spikes by Change')
+        element.connectWidget(SpikesByChangeWidget)
+        element.dataChanged.connect(self.redraw_plot)
+
+        self.treeToolBox.addItem(element.widget, 'Spikes by Change')
+        self.treeToolBox.setCurrentWidget(element.widget)
 
 
 if __name__ == '__main__':
