@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'mainwindow.ui'
+# Form implementation generated from reading ui file './ui/mainwindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.11.3
 #
@@ -160,7 +160,7 @@ class Ui_MainWindow(object):
         self.original.setObjectName("original")
         self.treeToolBox.addItem(self.original, "")
         self.op1 = QtWidgets.QWidget()
-        self.op1.setGeometry(QtCore.QRect(0, 0, 264, 262))
+        self.op1.setGeometry(QtCore.QRect(0, 0, 98, 28))
         self.op1.setObjectName("op1")
         self.treeToolBox.addItem(self.op1, "")
         self.verticalLayout_4.addWidget(self.treeToolBox)
@@ -237,7 +237,7 @@ class Ui_MainWindow(object):
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.actionOpen.setText(_translate("MainWindow", "Open"))
 
-from f1customwidgets import CustomPlotWidget
+from f1telemetry.ui.customwidgets import CustomPlotWidget
 
 if __name__ == "__main__":
     import sys

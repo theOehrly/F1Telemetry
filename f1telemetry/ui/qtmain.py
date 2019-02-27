@@ -1,19 +1,17 @@
-import sys
 import csv
 
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QProgressDialog
 from PyQt5.QtGui import QResizeEvent, QMouseEvent
-from PyQt5.Qt import QApplication
 from PyQt5.QtCore import QThread, pyqtSignal
 
 import pyqtgraph as qtg
 
-from ui.ui_mainwindow import Ui_MainWindow
-from ui.videoplayerwidget import VideoPlayerWidget
-from ui.f1customwidgets import TreeBaseWidget, SpikesByChangeWidget
+from f1telemetry.ui.mainwindow import Ui_MainWindow
+from f1telemetry.ui.videoplayerwidget import VideoPlayerWidget
+from f1telemetry.ui.treewidgets.customwidgets import TreeBaseWidget, SpikesByChangeWidget
 
-from datastruct import SelectionData, InteractiveDataSet
-import recognition
+from f1telemetry.datastruct import SelectionData, InteractiveDataSet
+from f1telemetry import recognition
 
 
 class OCRWorker(QThread):
@@ -43,7 +41,7 @@ class OCRWorker(QThread):
         super().quit()
 
 
-class MainUI(QMainWindow, Ui_MainWindow):
+class F1MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
 
@@ -198,7 +196,7 @@ class MainUI(QMainWindow, Ui_MainWindow):
     # ###### DATA PROCESSING ######## #
 
     def open_csv_file(self):
-        filename = 'testruns/new_file_format.csv'
+        filename = '../testruns/new_file_format.csv'
 
         x = list()
         ysets = list()
@@ -265,9 +263,3 @@ class MainUI(QMainWindow, Ui_MainWindow):
 
         self.treeToolBox.addItem(element.widget, 'Spikes by Change')
         self.treeToolBox.setCurrentWidget(element.widget)
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    mainui = MainUI()
-    app.exec()

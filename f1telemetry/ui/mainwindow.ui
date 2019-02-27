@@ -373,8 +373,8 @@
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>264</width>
-                 <height>262</height>
+                 <width>98</width>
+                 <height>28</height>
                 </rect>
                </property>
                <attribute name="label">
@@ -469,7 +469,7 @@
   <customwidget>
    <class>CustomPlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>f1customwidgets</header>
+   <header>f1telemetry.ui.customwidgets</header>
   </customwidget>
  </customwidgets>
  <resources/>
