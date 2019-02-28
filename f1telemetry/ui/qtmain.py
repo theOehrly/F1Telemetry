@@ -8,7 +8,7 @@ import pyqtgraph as qtg
 
 from f1telemetry.ui.mainwindow import Ui_MainWindow
 from f1telemetry.ui.videoplayerwidget import VideoPlayerWidget
-from f1telemetry.ui.treewidgets.customwidgets import BaseWidget, SpikesByChangeWidget
+from f1telemetry.ui.treewidgets.customwidgets import BaseWidget, SpikesByChangeWidget, SmoothingWidget
 
 from f1telemetry.datastruct import SelectionData, InteractiveDataSet
 from f1telemetry import recognition
@@ -96,6 +96,7 @@ class F1MainWindow(QMainWindow, Ui_MainWindow):
         self.mainPlotWidget.sigXRangeChanged.connect(self.update_aux_plot_view_region)
 
         self.toolSpikeRateButton.clicked.connect(self.tool_spike_rate)
+        self.toolSmoothingButton.clicked.connect(self.tool_smoothing)
 
         self.show()
 
@@ -262,4 +263,12 @@ class F1MainWindow(QMainWindow, Ui_MainWindow):
         element.dataChanged.connect(self.redraw_plot)
 
         self.treeToolBox.addItem(element.widget, 'Spikes by Change')
+        self.treeToolBox.setCurrentWidget(element.widget)
+
+    def tool_smoothing(self):
+        element = self.dataset.active.newElementFromNewest('Smoothing')
+        element.connectWidget(SmoothingWidget)
+        element.dataChanged.connect(self.redraw_plot)
+
+        self.treeToolBox.addItem(element.widget, 'Smoothing')
         self.treeToolBox.setCurrentWidget(element.widget)

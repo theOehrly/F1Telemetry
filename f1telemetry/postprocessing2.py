@@ -120,6 +120,74 @@ def bridge_error_segments(data, error_segs):
     return ndata
 
 
+def get_points_of_change(data, min_neg_change=-1):
+    # searches for points where the sign of data changes
+    # min_neg_change can be set so that a simple switch from postive to negative is not enough
+    #   but the value needs to be at least as small as min_neg_change (useful for filtering lift and coast)
+    previous_sign = 0
+    points_of_change = list()
+
+    for i in range(len(data)):
+        current_sign = sign(data[i])
+        if current_sign != previous_sign and current_sign != 0:
+            if 0 > data[i] > min_neg_change:
+                continue
+
+            points_of_change.append(i)
+            previous_sign = current_sign
+
+    return points_of_change
+
+
+def smooth_full(data):
+    ydata_smooth = savgol_filter(data, 15, 2)
+    return ydata_smooth
+
+
+def smooth_segmented(xdata, ydata, min_neg_change):
+    # calculate rate of change from data
+    data_deriv = derive(xdata, ydata)
+    # search for points of change
+    # min_neg_change can be set, so that only negative changes greater than it are considered important
+    speed_seg_points = get_points_of_change(data_deriv, min_neg_change=min_neg_change)
+    # add the first and last point of data for sake of simplicity when iterating over points later on
+    speed_seg_points.insert(0, 0)
+    speed_seg_points.append(len(xdata))
+
+    # smooth the values using a Savitzky-Golay filter
+    # only smooth from one segmentation point to the next and not the whole data
+    # this way all the max and min values are kept as they are
+    ydata_smooth = list()
+    # settings for filter
+    window_length = 15
+    polyorder = 2
+
+    for n in range(1, len(speed_seg_points)):
+        current_point = speed_seg_points[n]
+        previous_point = speed_seg_points[n-1]
+        if current_point - previous_point >= window_length:
+            ydata_smooth.extend(savgol_filter(ydata[previous_point:current_point], window_length, polyorder))
+        elif current_point - previous_point == 0:
+            continue
+        else:
+            # the segment to be smoothed is shorter than the filter settings allow
+            # therefore we need to adapt those settings (only for the current segment)
+            # first: set window length to the largest odd number that is smaller than our segment length
+            length = current_point - previous_point
+            if length % 2 == 0:
+                length -= 1
+            wl = length
+            # second: make sure polyorder is smaller than window length
+            if wl < polyorder:
+                po = wl - 1
+            else:
+                po = polyorder
+            # smooth current semgent with determined setting
+            ydata_smooth.extend(savgol_filter(ydata[previous_point:current_point], wl, po))
+
+    return ydata_smooth
+
+
 class SpikesByChange(QThread):
     processingFinished = pyqtSignal()
 
@@ -136,6 +204,29 @@ class SpikesByChange(QThread):
         data_deriv = derive(xdata, ydata)
         spikes = find_spikes(data_deriv, self.pmax, self.nmax)
         new_ydata = bridge_error_segments(ydata, spikes)
+
+        self.treeelement.xdata = xdata
+        self.treeelement.ydata = new_ydata
+        self.processingFinished.emit()
+
+
+class Smoothing(QThread):
+    processingFinished = pyqtSignal()
+
+    def __init__(self, treeelement, segmented, min_neg_change=0):
+        super().__init__()
+
+        self.treeelement = treeelement
+        self.segmented = segmented
+        self.min_neg_change = min_neg_change
+
+    def run(self):
+        xdata, ydata = self.treeelement.getPreviousData()
+
+        if self.segmented:
+            new_ydata = smooth_segmented(xdata, ydata, self.min_neg_change)
+        else:
+            new_ydata = smooth_full(ydata)
 
         self.treeelement.xdata = xdata
         self.treeelement.ydata = new_ydata
