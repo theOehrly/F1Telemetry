@@ -12,6 +12,7 @@ from f1telemetry.ui.treewidgets.customwidgets import BaseWidget, SpikesByChangeW
 
 from f1telemetry.datastruct import SelectionData, InteractiveDataSet
 from f1telemetry import recognition
+from f1telemetry import postprocessing2
 
 
 class OCRWorker(QThread):
@@ -220,6 +221,7 @@ class F1MainWindow(QMainWindow, Ui_MainWindow):
 
         self.dataset = InteractiveDataSet(self, x, ysets, headers[1:], filename, BaseWidget)
         self.dataset.activeTreeChanged.connect(self.reload_all)
+        self.dataset.dataChanged.connect(self.redraw_plot)
         self.reload_all()
 
     def reload_all(self):
@@ -260,7 +262,7 @@ class F1MainWindow(QMainWindow, Ui_MainWindow):
     def tool_spike_rate(self):
         element = self.dataset.active.newElementFromNewest('Spikes by Change')
         element.connectWidget(SpikesByChangeWidget)
-        element.dataChanged.connect(self.redraw_plot)
+        element.setProcessingFunction(postprocessing2.spikes_by_change)
 
         self.treeToolBox.addItem(element.widget, 'Spikes by Change')
         self.treeToolBox.setCurrentWidget(element.widget)
@@ -268,7 +270,7 @@ class F1MainWindow(QMainWindow, Ui_MainWindow):
     def tool_smoothing(self):
         element = self.dataset.active.newElementFromNewest('Smoothing')
         element.connectWidget(SmoothingWidget)
-        element.dataChanged.connect(self.redraw_plot)
+        element.setProcessingFunction(postprocessing2.smoothing)
 
         self.treeToolBox.addItem(element.widget, 'Smoothing')
         self.treeToolBox.setCurrentWidget(element.widget)

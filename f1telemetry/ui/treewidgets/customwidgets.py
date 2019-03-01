@@ -2,7 +2,6 @@ from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import Qt
 
 from f1telemetry.ui.treewidgets import spikesbychange, base, smoothing
-from f1telemetry import postprocessing2
 
 
 class BaseWidget(QWidget, base.Ui_BaseWidget):
@@ -35,15 +34,8 @@ class SpikesByChangeWidget(QWidget, spikesbychange.Ui_SpikesByChange):
         self.ratePosBox.valueChanged.connect(self.valueChanged)
         self.rateNegBox.valueChanged.connect(self.valueChanged)
 
-        self.worker = None
-
     def valueChanged(self):
-        self.worker = postprocessing2.SpikesByChange(self.treeelement, self.ratePosBox.value(), self.rateNegBox.value())
-        self.worker.processingFinished.connect(self.finished)
-        self.worker.start()
-
-    def finished(self):
-        self.treeelement.dataChanged.emit()
+        self.treeelement.processDataThreaded(self.ratePosBox.value(), self.rateNegBox.value())
 
 
 class SmoothingWidget(QWidget, smoothing.Ui_Smoothing):
@@ -55,10 +47,6 @@ class SmoothingWidget(QWidget, smoothing.Ui_Smoothing):
         self.minDecelBox.valueChanged.connect(self.valueChanged)
         self.splitCheckBox.stateChanged.connect(self.valueChanged)
 
-        self.split_data = True
-
-        self.worker = None
-
     def valueChanged(self):
         if self.splitCheckBox.checkState() == Qt.Checked:
             segmented = True
@@ -66,9 +54,4 @@ class SmoothingWidget(QWidget, smoothing.Ui_Smoothing):
         else:
             segmented = False
             min_neg_change = 0
-        self.worker = postprocessing2.Smoothing(self.treeelement, segmented, min_neg_change)
-        self.worker.processingFinished.connect(self.finished)
-        self.worker.start()
-
-    def finished(self):
-        self.treeelement.dataChanged.emit()
+        self.treeelement.processDataThreaded(segmented, min_neg_change)

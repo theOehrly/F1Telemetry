@@ -1,4 +1,4 @@
-from PyQt5.QtCore import pyqtSignal, QObject
+from PyQt5.QtCore import pyqtSignal, QObject, QThread
 
 
 class SelectionData:
@@ -35,6 +35,7 @@ class SelectionData:
 class InteractiveDataSet(QObject):
     activeTreeChanged = pyqtSignal()
     initFinished = pyqtSignal()
+    dataChanged = pyqtSignal()
 
     def __init__(self, ui, xdata, ydatasets, names, filename, basewidget):
         super().__init__()
@@ -96,20 +97,27 @@ class Tree(QObject):
         self.current = None
 
         self.dataset = dataset
+        self.regenerator = None
 
     def appendTreeElement(self, element):
         element.parent = self
+        element.dataChanged.connect(self.regenerate)
         self.elements.append(element)
 
         if len(self.elements) == 1:
             self.current = element
 
-    def regenerateAll(self):
-        pass
-
-    def regenerateFrom(self, element):
-        assert element not in self.elements, 'Element of type {} is not part of this tree!'.format(type(element))
-        pass
+    def regenerate(self):
+        element = self.sender()
+        if element == self.elements[-1]:
+            # element is newest element
+            self.dataset.dataChanged.emit()
+        else:
+            # element is one of the older elements; following elements need to be recalculated
+            i = element.index()
+            self.regenerator = Regenerator(self.elements[i+1:])
+            self.regenerator.regenerationFinished.connect(self.finished)
+            self.regenerator.start()
 
     def getNewest(self):
         return self.elements[-1]
@@ -126,8 +134,10 @@ class Tree(QObject):
         element = TreeElement(name, self.dataset, xdata, ydata)
         self.appendTreeElement(element)
         self.setCurrent(element)
-
         return element
+
+    def finished(self):
+        self.dataset.dataChanged.emit()
 
 
 class TreeElement(QObject):
@@ -141,6 +151,9 @@ class TreeElement(QObject):
         self.options = options
         self.xdata = xdata
         self.ydata = ydata
+
+        self.processor = None
+        self.processing_function = None
 
         self.segements = list()
 
@@ -157,3 +170,57 @@ class TreeElement(QObject):
 
     def index(self):
         return self.parent.elements.index(self)
+
+    def setProcessingFunction(self, function):
+        self.processing_function = function
+
+    def processDataThreaded(self, *options):
+        assert self.processing_function, 'no processing function was given for this TreeElement'
+
+        self.options = options
+        self.processor = Processor(self, self.processing_function, *options)
+        self.processor.processingFinished.connect(self.finished)
+        self.processor.start()
+
+    def reprocessData(self):
+        assert self.processing_function, 'no processing function was given for this TreeElement'
+
+        xdata, ydata = self.getPreviousData()
+        self.xdata, self.ydata = self.processing_function(xdata, ydata, *self.options)
+
+    def finished(self):
+        self.dataChanged.emit()
+
+
+class Regenerator(QThread):
+    regenerationFinished = pyqtSignal()
+
+    def __init__(self, elements):
+        super().__init__()
+        self.elements = elements
+
+    def run(self):
+        for element in self.elements:
+            element.reprocessData()
+
+        self.regenerationFinished.emit()
+
+
+class Processor(QThread):
+    processingFinished = pyqtSignal()
+
+    def __init__(self, treeelement, function, *options):
+        super().__init__()
+
+        self.treeelement = treeelement
+        self.function = function
+        self.options = options
+
+    def run(self):
+        xdata, ydata = self.treeelement.getPreviousData()
+
+        new_xdata, new_ydata = self.function(xdata, ydata, *self.options)
+
+        self.treeelement.xdata = new_xdata
+        self.treeelement.ydata = new_ydata
+        self.processingFinished.emit()

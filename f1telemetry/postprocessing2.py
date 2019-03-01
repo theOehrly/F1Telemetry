@@ -188,46 +188,18 @@ def smooth_segmented(xdata, ydata, min_neg_change):
     return ydata_smooth
 
 
-class SpikesByChange(QThread):
-    processingFinished = pyqtSignal()
-
-    def __init__(self, treeelement, pmax, nmax):
-        super().__init__()
-
-        self.treeelement = treeelement
-        self.pmax = pmax
-        self.nmax = nmax
-
-    def run(self):
-        xdata, ydata = self.treeelement.getPreviousData()
-
+def spikes_by_change(xdata, ydata, pmax, nmax):
         data_deriv = derive(xdata, ydata)
-        spikes = find_spikes(data_deriv, self.pmax, self.nmax)
+        spikes = find_spikes(data_deriv, pmax, nmax)
         new_ydata = bridge_error_segments(ydata, spikes)
 
-        self.treeelement.xdata = xdata
-        self.treeelement.ydata = new_ydata
-        self.processingFinished.emit()
+        return xdata, new_ydata
 
 
-class Smoothing(QThread):
-    processingFinished = pyqtSignal()
-
-    def __init__(self, treeelement, segmented, min_neg_change=0):
-        super().__init__()
-
-        self.treeelement = treeelement
-        self.segmented = segmented
-        self.min_neg_change = min_neg_change
-
-    def run(self):
-        xdata, ydata = self.treeelement.getPreviousData()
-
-        if self.segmented:
-            new_ydata = smooth_segmented(xdata, ydata, self.min_neg_change)
+def smoothing(xdata, ydata, segmented, min_neg_change):
+        if segmented:
+            new_ydata = smooth_segmented(xdata, ydata, min_neg_change)
         else:
             new_ydata = smooth_full(ydata)
 
-        self.treeelement.xdata = xdata
-        self.treeelement.ydata = new_ydata
-        self.processingFinished.emit()
+        return xdata, new_ydata
