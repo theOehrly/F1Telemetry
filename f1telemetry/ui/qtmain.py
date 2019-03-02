@@ -6,13 +6,13 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 import pyqtgraph as qtg
 
-from f1telemetry.ui.mainwindow import Ui_MainWindow
-from f1telemetry.ui.videoplayerwidget import VideoPlayerWidget
-from f1telemetry.ui.treewidgets.customwidgets import BaseWidget, SpikesByChangeWidget, SmoothingWidget
+from ui.mainwindow import Ui_MainWindow
+from ui.videoplayerwidget import VideoPlayerWidget
+from ui.treewidgets.customwidgets import BaseWidget, SpikesByChangeWidget, SmoothingWidget
 
-from f1telemetry.datastruct import SelectionData, InteractiveDataSet
-from f1telemetry import recognition
-from f1telemetry import postprocessing2
+from datastruct import SelectionData, InteractiveDataSet
+import recognition
+import postprocessing2
 
 
 class OCRWorker(QThread):

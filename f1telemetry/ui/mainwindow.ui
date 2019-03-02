@@ -469,7 +469,7 @@
   <customwidget>
    <class>CustomPlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>f1telemetry.ui.customwidgets</header>
+   <header>ui.customwidgets</header>
   </customwidget>
  </customwidgets>
  <resources/>

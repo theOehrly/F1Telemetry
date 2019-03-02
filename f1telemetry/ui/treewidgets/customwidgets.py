@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import Qt
 
-from f1telemetry.ui.treewidgets import spikesbychange, base, smoothing
+from ui.treewidgets import spikesbychange, base, smoothing
 
 
 class BaseWidget(QWidget, base.Ui_BaseWidget):

@@ -237,7 +237,7 @@ class Ui_MainWindow(object):
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.actionOpen.setText(_translate("MainWindow", "Open"))
 
-from f1telemetry.ui.customwidgets import CustomPlotWidget
+from ui.customwidgets import CustomPlotWidget
 
 if __name__ == "__main__":
     import sys

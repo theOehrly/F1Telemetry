@@ -4,8 +4,8 @@ from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QResizeEvent, QInputEvent, QPainter, QPen, QPalette
 from PyQt5 import QtCore
 
-from f1telemetry.ui.videoplayerbasewidget import Ui_VideoPlayer
-from f1telemetry.videosource import VideoSource
+from ui.videoplayerbasewidget import Ui_VideoPlayer
+from videosource import VideoSource
 
 
 class Overlay(QWidget):
