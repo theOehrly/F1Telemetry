@@ -37,7 +37,7 @@ class InteractiveDataSet(QObject):
     initFinished = pyqtSignal()
     dataChanged = pyqtSignal()
 
-    def __init__(self, ui, xdata, ydatasets, names, filename, basewidget):
+    def __init__(self, ui, xdata, ydatasets, xname, ynames, filename, basewidget):
         super().__init__()
         # make sure xdata is a list/tuple containing only numbers, while ydatasets needs to be a list/tuple
         # containing one or multiple lists/tuples which may only contain numbers
@@ -46,11 +46,13 @@ class InteractiveDataSet(QObject):
         assert isinstance(any(xdata), (float, int)), 'xdata may only contain int or float!'
         assert isinstance(ydatasets, (list, tuple)), 'ydatasets needs to be a list or tuple!'
         assert not isinstance(any(ydatasets), (list, tuple)), 'ydatasets may only contain lists or tuples!'
-        assert isinstance(names, (list, tuple)), 'names needs to be a list or tuple!'
-        assert len(ydatasets) == len(names), 'ydatasets and names need to be of equal length!'
+        assert isinstance(ynames, (list, tuple)), 'names needs to be a list or tuple!'
+        assert len(ydatasets) == len(ynames), 'ydatasets and names need to be of equal length!'
 
         self.ui = ui
         self.trees = dict()
+
+        self.xname = xname  # header for x data column
 
         for i in range(len(ydatasets)):
             assert len(ydatasets[i]) == len(xdata), 'every set of values in ydatasets needs have equal length as xdata!'
@@ -58,7 +60,7 @@ class InteractiveDataSet(QObject):
             # Create a base tree element and append it to a new tree. The tree is then added to the dataset's trees
             element = TreeElement('Base', self, xdata=xdata, ydata=ydatasets[i], options={'filename': filename})
             element.connectWidget(basewidget)
-            tree = Tree(names[i], self)
+            tree = Tree(ynames[i], self)
             tree.appendTreeElement(element)
             self.trees[tree.name] = tree
 
