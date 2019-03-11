@@ -238,7 +238,7 @@ def recognize(filename, outfile, uid, selection, parentQThread):
 
         csv_file = open(outfile, "w")
         # write headers
-        headers = ['speed', 'time']
+        headers = ['time', 'speed']
         for i in range(len(headers)):
             headers[i] = headers[i] + '_' + uid
         csv_file.write('; '.join(headers) + '\n')
