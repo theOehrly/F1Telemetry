@@ -21,10 +21,10 @@ class VideoSource:
         self.capture = None
 
         # some information about the source file; values are constants
-        self.source_fps = None  # video fps
-        self.source_frame_duration = None  # duration of one frame
-        self.total_frames = None
-        self.duration = None  # video duration
+        self.source_fps = 0  # video fps
+        self.source_frame_duration = 0  # duration of one frame
+        self.total_frames = 0
+        self.duration = 0  # video duration
 
         if videofile:
             self.open_file(videofile)
@@ -187,7 +187,10 @@ class VideoSource:
 
         self.frame_skip_factor = int(abs(speed)) if abs(speed) >= 1 else 1
         # used to skip frames so that playback framerate stays within one to two times source fps
-        self.playback_frame_duration = int(1000 / (self.source_fps * abs(speed))) * self.frame_skip_factor
+        try:
+            self.playback_frame_duration = int(1000 / (self.source_fps * abs(speed))) * self.frame_skip_factor
+        except ZeroDivisionError:
+            pass  # should only happen when no videofile is opened; no errorhandling required
 
     def release(self):
         """Releases the capture."""

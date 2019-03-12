@@ -288,6 +288,10 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
     def change_playback_speed(self, speed):
         """Called when the playback speed slider is moved."""
+        if not self.videosource.capture:
+            self.slider_speed.setValue(10)  # "prevent moving the slider"
+            return
+
         speed /= 10  # Slider values are times factor ten for provding one deciaml place accuracy
         self.lbl_playbackspeed.setText(str(speed))  # update the info lable
         if speed == 0:
@@ -304,15 +308,17 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
     def next_frame(self):
         """Called by next frame button in frame by frame mode."""
-        self.singleframe = True
-        self.videosource.set_playback_speed(1)
-        self.draw_next_frame()
+        if self.videosource.capture:
+            self.singleframe = True
+            self.videosource.set_playback_speed(1)
+            self.draw_next_frame()
 
     def previous_frame(self):
         """Called by previous frame button in frame by frame mode."""
-        self.singleframe = True
-        self.videosource.set_playback_speed(-1)
-        self.draw_next_frame()
+        if self.videosource.capture:
+            self.singleframe = True
+            self.videosource.set_playback_speed(-1)
+            self.draw_next_frame()
 
     def mouse_drag(self, _event):
         """Calcultes image cordinates from diplay coordinates and updates the selection."""
@@ -351,21 +357,24 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
 
     def set_start_frame(self):
         """Sets the current frame as start of the selection."""
-        self.selection.set_start_frame(self.frame_pos)
-        self.lbl_markstart.setText(self.format_frame_time(self.frame_pos,
-                                                          self.frame_pos/self.videosource.source_fps))
+        if self.videosource.capture:
+            self.selection.set_start_frame(self.frame_pos)
+            self.lbl_markstart.setText(self.format_frame_time(self.frame_pos,
+                                                              self.frame_pos/self.videosource.source_fps))
 
     def set_end_frame(self):
         """Sets the current frame as endof the selection."""
-        self.selection.set_end_frame(self.frame_pos)
-        self.lbl_markend.setText(self.format_frame_time(self.frame_pos,
-                                                        self.frame_pos/self.videosource.source_fps))
+        if self.videosource.capture:
+            self.selection.set_end_frame(self.frame_pos)
+            self.lbl_markend.setText(self.format_frame_time(self.frame_pos,
+                                                            self.frame_pos/self.videosource.source_fps))
 
     def set_zero_frame(self):
         """Sets the current frame as zero time of the selection."""
-        self.selection.set_zero_frame(self.frame_pos)
-        self.lbl_markzero.setText(self.format_frame_time(self.frame_pos,
-                                                         self.frame_pos/self.videosource.source_fps))
+        if self.videosource.capture:
+            self.selection.set_zero_frame(self.frame_pos)
+            self.lbl_markzero.setText(self.format_frame_time(self.frame_pos,
+                                                             self.frame_pos/self.videosource.source_fps))
 
     @staticmethod
     def format_frame_time(frames, seconds):

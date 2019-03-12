@@ -20,9 +20,10 @@ It needs to be copied into the appropriate foler of your tesseract installation.
 
 Current Issues:
 - 
-- Player may crash when trying to play a file but no file has been opened
 - Videoplayer is slow(ish); dragging through the timeline may be a few frames off
 - It is difficult to move the OCR Region selection precisely
 - Not all postprocessing tools that have buttons are implemented
 - Tree items are not correctly themed/have wrong size
-- Saving from postprocessing environment only saves the currently active tree  
+- Saving from postprocessing environment only saves the currently active tree
+
+and probably more  
