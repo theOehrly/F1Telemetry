@@ -1,4 +1,5 @@
-from PyQt5.QtCore import pyqtSignal, QObject, QThread
+from PyQt5.QtCore import pyqtSignal, QObject
+from backgroundtasks import DataProcessor, Regenerator
 
 
 class SelectionData:
@@ -180,7 +181,7 @@ class TreeElement(QObject):
         assert self.processing_function, 'no processing function was given for this TreeElement'
 
         self.options = options
-        self.processor = Processor(self, self.processing_function, *options)
+        self.processor = DataProcessor(self, self.processing_function, *options)
         self.processor.processingFinished.connect(self.finished)
         self.processor.start()
 
@@ -192,37 +193,3 @@ class TreeElement(QObject):
 
     def finished(self):
         self.dataChanged.emit()
-
-
-class Regenerator(QThread):
-    regenerationFinished = pyqtSignal()
-
-    def __init__(self, elements):
-        super().__init__()
-        self.elements = elements
-
-    def run(self):
-        for element in self.elements:
-            element.reprocessData()
-
-        self.regenerationFinished.emit()
-
-
-class Processor(QThread):
-    processingFinished = pyqtSignal()
-
-    def __init__(self, treeelement, function, *options):
-        super().__init__()
-
-        self.treeelement = treeelement
-        self.function = function
-        self.options = options
-
-    def run(self):
-        xdata, ydata = self.treeelement.getPreviousData()
-
-        new_xdata, new_ydata = self.function(xdata, ydata, *self.options)
-
-        self.treeelement.xdata = new_xdata
-        self.treeelement.ydata = new_ydata
-        self.processingFinished.emit()

@@ -1,0 +1,16 @@
+<resources>
+     <color name="f1telemetry_50">#e8e8e9</color>
+     <color name="f1telemetry_100">#c5c6c7</color>
+     <color name="f1telemetry_200">#9ea0a2</color>
+     <color name="f1telemetry_300">#77797c</color>
+     <color name="f1telemetry_400">#5a5d60</color>
+     <color name="f1telemetry_500">#3d4044</color>
+     <color name="f1telemetry_600">#373a3e</color>
+     <color name="f1telemetry_700">#2f3235</color>
+     <color name="f1telemetry_800">#272a2d</color>
+     <color name="f1telemetry_900">#1a1c1f</color>
+     <color name="f1telemetry_A100">#6db3f9</color>
+     <color name="f1telemetry_A200">#3c9af7</color>
+     <color name="f1telemetry_A400">#0280ff</color>
+     <color name="f1telemetry_A700">#0074e7</color>
+<resources>
