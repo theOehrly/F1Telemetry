@@ -13,7 +13,9 @@ Videoplay and Source:
 
 
 Issues:
+- crash when having remove interval after savgol and then diasabling splitting for savgol
 - size of Tree sidebar
 - drop down indicator icon
 - selection of ocr region
 - tools are not immediately applied when clicked
+- add general lost_focus function to tree items for disabling / hiding them

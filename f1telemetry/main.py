@@ -15,14 +15,18 @@ class F1TProxyStyle(QProxyStyle):
 
 
 class Window(QWidget):
-    def __init__(self):
+    def __init__(self, application):
         super(QWidget, self).__init__()
+        self.application = application
+
+        self.postprocessing = PostProcessing()
+        self.videorecognition = VideoRecognition()
 
         self.windowlayout = QStackedLayout(self)
         self.windowlayout.setSpacing(0)
         self.windowlayout.setContentsMargins(0, 0, 0, 0)
-        self.windowlayout.addWidget(PostProcessing())
-        self.windowlayout.addWidget(VideoRecognition())
+        self.windowlayout.addWidget(self.postprocessing)
+        self.windowlayout.addWidget(self.videorecognition)
 
         self.windowlayout.setCurrentIndex(0)
 
@@ -34,7 +38,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     f1tstyle = F1TProxyStyle('Windows')
     app.setStyle(f1tstyle)
-    window = Window()
+    window = Window(app)
     window.setWindowTitle('F1Telemetry')
     window.show()
     app.exec()

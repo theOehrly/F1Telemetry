@@ -192,11 +192,62 @@ def smooth_segmented(xdata, ydata, min_neg_change):
     return ydata_smooth
 
 
+def index_round_to_next(xdata, value):
+    # rounds value to nearest larger value in xdata and returns the index
+    # assumes the values in xdata to only be increasing; xdata intervals do not need to be constant though
+    if value in xdata:
+        return value  # value is in dataset
+
+    avg_interval = (xdata[-1] - xdata[0]) / len(xdata)
+    index = int(round(value / avg_interval, 0))  # start index is just a guess implying constant intervals
+
+    try:
+        while xdata[index] > value:
+            index -= 1
+        while xdata[index] < value:
+            index += 1
+        return index
+    except IndexError:
+        return None
+
+
+def round_to_next(xdata, value):
+    # returns value rounded to the nearest larger value in xdata
+    i = index_round_to_next(xdata, value)
+    if i:
+        return xdata[i]
+    return None
+
+
+def round_to_previous(xdata, value):
+    # returns value rounded to the nearest smaller value in xdata
+    i = index_round_to_next(xdata, value)
+    if i:
+        return xdata[i - 1]
+    return None
+
+
+def round_to_closest(xdata, value):
+    # returns value rounded to the closest value in xdata
+    nextvalue = round_to_next(xdata, value)  # get next and previous value
+    prevvalue = round_to_previous(xdata, value)
+
+    if not nextvalue or not prevvalue:
+        return None
+
+    delta_next = abs(nextvalue - value)  # calculate absolute difference
+    delta_prev = abs(prevvalue - value)
+
+    if delta_next < delta_prev:  # return the value with the smaller absolute difference
+        return nextvalue
+    return prevvalue
+
 # ########################################
 # Main processing functions
 # These functions are connected to treelements as their respective data processing functions
 # !!! These functions may not change the data they are given but must create a copy !!!
 # If data is not changed, creating a copy is not required
+
 
 def spikes_by_change(xdata, ydata, pmax, nmax):
         data_deriv = derive(xdata, ydata)
@@ -204,6 +255,66 @@ def spikes_by_change(xdata, ydata, pmax, nmax):
         new_ydata = bridge_error_segments(ydata, spikes)
 
         return xdata, new_ydata
+
+
+def spikes_manual(xdata, ydata, cutpaths):
+    new_xdata = xdata.copy()
+    new_ydata = ydata.copy()
+
+    for cutpath in cutpaths:
+        if cutpath[-1] < cutpath[0]:  # reverse cut if last x value smaller than first
+            cutpaths[0] = reversed(cutpath[0])
+            cutpaths[1] = reversed(cutpath[1])
+
+        # cutpath has format (xvalues, yvalues)
+        # first, get the x values in the dataset best corresponding to the values from the path
+        corresponding_xvals = list()
+
+        for x in cutpath[0]:
+            v = round_to_closest(new_xdata, x)
+            if not v:
+                return xdata, ydata  # cut path is faulty, return unmodified data
+            corresponding_xvals.append(v)
+
+        # remove all duplicates
+        filtered_xvals = list()
+        filtered_yvals = list()
+        for i in range(len(corresponding_xvals)):
+            if corresponding_xvals[i] not in filtered_xvals:
+                filtered_xvals.append(corresponding_xvals[i])
+                filtered_yvals.append(cutpath[1][i])
+
+        # create list of indexes corresponding to position in dataset xdata/ydata
+        indexes = list()
+        for xval in filtered_xvals:
+            indexes.append(new_xdata.index(xval))
+
+        # divide indexes into two groups, one where data is above cut and one where data is below
+        # this is done by iterating from first index to last index thereby creating a continious list of indexes
+        # the previously created index list may have gaps because of fast mouse movement, meaning spikes can be missed
+        # the y value of the previous "real" index is used to determine above or below
+        indexes_above = list()  # data is above cut path
+        indexes_below = list()
+        for i in range(indexes[0], indexes[-1]+1):
+            if i in indexes:
+                current_y = filtered_yvals[indexes.index(i)]  # "real" index, update the y value of the cut path
+            if current_y < new_ydata[i]:
+                indexes_above.append(i)
+            else:
+                indexes_below.append(i)
+
+        # check whether more datapoints are above or below the cut
+        # delete the side where there are less
+        if len(indexes_above) < len(indexes_below):
+            for index in indexes_above.__reversed__():  # pop from back so other indexes don't change
+                new_xdata.pop(index)
+                new_ydata.pop(index)
+        else:
+            for index in indexes_below.__reversed__():  # pop from back so other indexes don't change
+                new_xdata.pop(index)
+                new_ydata.pop(index)
+
+    return new_xdata, new_ydata
 
 
 def smoothing(xdata, ydata, segmented, min_neg_change):

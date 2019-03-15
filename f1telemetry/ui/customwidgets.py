@@ -1,5 +1,5 @@
 from pyqtgraph import PlotWidget
-from PyQt5.Qt import QSize, QFont, QIcon, QFontMetrics
+from PyQt5.Qt import QSize, QFont, QIcon, QFontMetrics, QPoint
 from PyQt5.QtWidgets import (QToolButton, QCheckBox, QSizePolicy, QSpacerItem, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QPushButton, QDialog, QFormLayout, QLineEdit, QFileDialog, QProgressDialog)
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -16,12 +16,36 @@ class F1PlotWidget(PlotWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.mouse_interceptor = None
+        self.proxy = None
+
     def mouseReleaseEvent(self, _event):
         # suppress right clicks
         if _event.button() == Qt.RightButton:
             _event.accept()
+        # forward mouse events
+        elif self.mouse_interceptor and _event.button() == Qt.LeftButton:
+            self.mouse_interceptor.plotMouseEvent(_event)
         else:
             super().mouseReleaseEvent(_event)
+
+    def mousePressEvent(self, _event):
+        if self.mouse_interceptor and _event.button() == Qt.LeftButton:
+            self.mouse_interceptor.plotMouseEvent(_event)
+        else:
+            super().mousePressEvent(_event)
+
+    def mouseMoveEvent(self, _event):
+        if self.mouse_interceptor:
+            self.mouse_interceptor.plotMouseEvent(_event)
+        else:
+            super().mouseMoveEvent(_event)
+
+    def setMouseInterceptor(self, obj):
+        self.mouse_interceptor = obj
+
+    def removeMouseInterceptor(self):
+        self.mouse_interceptor = None
 
 
 class F1ClickableHeader(QWidget):

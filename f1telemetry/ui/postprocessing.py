@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QFileDialog
 
 from ui.postprocessing_ui import PostProcessingUI
 from ui.treewidgets.widgets import (BaseWidget, SmoothingSavgolWidget, SpikesByChangeWidget,
-                                    DatapointsRemovePeriodicWidget)
+                                    DatapointsRemovePeriodicWidget, SpikesManualWidget)
 
 from datastruct import InteractiveDataSet
 import postprocessing2
@@ -34,14 +34,12 @@ class PostProcessing(PostProcessingUI):
         self.saveBtn.clicked.connect(self.save_file)
 
         self.spikesRateBtn.clicked.connect(self.tool_spike_rate)
+        self.spikesManualBtn.clicked.connect(self.tool_spikes_manual)
         self.smoothingSavgolBtn.clicked.connect(self.tool_smoothing)
         self.datapointsRemovePeriodicBtn.clicked.connect(self.tool_datapoints_remove_periodic)
 
         self.showOriginalBox.toggled.connect(self.toggle_show_original)
         self.show_original = False  # boolean value; defines whether original data is plotted addionally to newest
-
-        # open sample file, for testing only
-        # self.read_csv_file('../testruns/new_file_format.csv')
 
     def reload_all(self):
         """Redraws the plot AND UPDATES ALL OTHER UI ELEMENTS that can change."""
@@ -117,6 +115,12 @@ class PostProcessing(PostProcessingUI):
         element.connectWidget(SpikesByChangeWidget)
         element.setProcessingFunction(postprocessing2.spikes_by_change)
         self.tree.addItem(element.widget, 'SPIKES: Rate')
+
+    def tool_spikes_manual(self):
+        element = self.dataset.active.newElementFromNewest('Spikes Manual')
+        element.connectWidget(SpikesManualWidget)
+        element.setProcessingFunction(postprocessing2.spikes_manual)
+        self.tree.addItem(element.widget, 'SPIKES: Manual')
 
     def tool_smoothing(self):
         element = self.dataset.active.newElementFromNewest('Smoothing')

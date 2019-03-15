@@ -1,6 +1,7 @@
-from PyQt5.QtWidgets import QWidget, QFormLayout, QGridLayout, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox, QLabel
+from PyQt5.QtWidgets import (QWidget, QFormLayout, QGridLayout, QVBoxLayout, QHBoxLayout, QComboBox, QSpinBox, QLabel,
+                             QListWidget)
 from PyQt5.Qt import QFont
-from ui.customwidgets import LeftElidingLabel, F1CheckBox
+from ui.customwidgets import LeftElidingLabel, F1CheckBox, F1PushButton
 
 
 FONT = QFont('Bahnschrift')
@@ -70,6 +71,26 @@ class SpikesByChangeWidgetUI(QWidget):
         unitinfolbl = QLabel("[km/h per sec]")
         unitinfolbl.setStyleSheet("""QLabel {background: None;}""")
         self.layout.addWidget(unitinfolbl, 2, 3, 2, 1)
+
+
+class SpikesManualWidgetUI(QWidget):
+    def __init__(self):
+        super(QWidget, self).__init__()
+
+        self.layout = QGridLayout(self)
+
+        self.cutPathsList = QListWidget()
+        self.cutPathsList.setSelectionMode(QListWidget.SingleSelection)
+        self.cutPathsList.setFixedHeight(150)
+        self.layout.addWidget(self.cutPathsList, 1, 1, 1, 2)
+
+        self.addBtn = F1PushButton()
+        self.addBtn.setText('Add')
+        self.layout.addWidget(self.addBtn, 2, 1)
+
+        self.delBtn = F1PushButton()
+        self.delBtn.setText('Delete')
+        self.layout.addWidget(self.delBtn, 2, 2)
 
 
 class SmoothingSavgolWidgetUI(QWidget):
