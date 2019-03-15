@@ -6,6 +6,13 @@
             --> don't rescale at all; adjusting textbox size solved issue
 
 
-
+Videoplay and Source:
 - should rewrite videosource from scratch
 - use python multiprocessing ?!?
+- playback is not really necessary; only frame-by-frame and scrubbing
+
+
+Issues:
+- size of Tree sidebar
+- drop down indicator icon
+- selection of ocr region

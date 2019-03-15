@@ -1,14 +1,12 @@
-from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import Qt
 
-from ui.treewidgets import spikesbychange, base, smoothing
+from ui.treewidgets import widgetsui
 
 
-class BaseWidget(QWidget, base.Ui_BaseWidget):
+class BaseWidget(widgetsui.BaseWidgetUI):
     def __init__(self, treeelement):
         super().__init__()
         self.treeelement = treeelement
-        self.setupUi(self)
         self.treeelement.dataset.initFinished.connect(self.finishInit)
         self.datasetDropdown.currentTextChanged.connect(self.treeelement.dataset.setActiveTree)
 
@@ -25,11 +23,10 @@ class BaseWidget(QWidget, base.Ui_BaseWidget):
         self.datasetDropdown.setCurrentText(self.treeelement.dataset.getActiveTreeName())
 
 
-class SpikesByChangeWidget(QWidget, spikesbychange.Ui_SpikesByChange):
+class SpikesByChangeWidget(widgetsui.SpikesByChangeWidgetUI):
     def __init__(self, treeelement):
         super().__init__()
         self.treeelement = treeelement
-        self.setupUi(self)
 
         self.ratePosBox.valueChanged.connect(self.valueChanged)
         self.rateNegBox.valueChanged.connect(self.valueChanged)
@@ -38,19 +35,19 @@ class SpikesByChangeWidget(QWidget, spikesbychange.Ui_SpikesByChange):
         self.treeelement.processDataThreaded(self.ratePosBox.value(), self.rateNegBox.value())
 
 
-class SmoothingWidget(QWidget, smoothing.Ui_Smoothing):
+class SmoothingSavgolWidget(widgetsui.SmoothingSavgolWidgetUI):
     def __init__(self, treeelement):
         super().__init__()
         self.treeelement = treeelement
-        self.setupUi(self)
+        # self.setupUi(self)
 
-        self.minDecelBox.valueChanged.connect(self.valueChanged)
+        self.minNegRateBox.valueChanged.connect(self.valueChanged)
         self.splitCheckBox.stateChanged.connect(self.valueChanged)
 
     def valueChanged(self):
         if self.splitCheckBox.checkState() == Qt.Checked:
             segmented = True
-            min_neg_change = self.minDecelBox.value()
+            min_neg_change = self.minNegRateBox.value()
         else:
             segmented = False
             min_neg_change = 0

@@ -266,6 +266,7 @@ class F1CheckBox(QCheckBox):
                                 font: 10pt;
                                 color: #373a3e;
                                 border: None;
+                                background: None;
                             }
                             
                             QCheckBox::indicator {
@@ -344,7 +345,7 @@ class LeftElidingLabel(QLabel):
         self.setTextElided(p_str)
 
     def setTextElided(self, p_str):
-        qfm = QFontMetrics(FONT)
+        qfm = QFontMetrics(FONT)  # fix: assumes font to be the globaly set font
         elided_str = qfm.elidedText(p_str, Qt.ElideLeft, self.width())
         super().setText(elided_str)
 

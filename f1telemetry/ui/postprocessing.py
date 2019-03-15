@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QFileDialog
 
 from ui.postprocessing_ui import PostProcessingUI
-from ui.treewidgets.customwidgets import BaseWidget, SmoothingWidget, SpikesByChangeWidget
+from ui.treewidgets.widgets import BaseWidget, SmoothingSavgolWidget, SpikesByChangeWidget
 
 from datastruct import InteractiveDataSet
 import postprocessing2
@@ -118,6 +118,6 @@ class PostProcessing(PostProcessingUI):
 
     def tool_smoothing(self):
         element = self.dataset.active.newElementFromNewest('Smoothing')
-        element.connectWidget(SmoothingWidget)
+        element.connectWidget(SmoothingSavgolWidget)
         element.setProcessingFunction(postprocessing2.smoothing)
-        self.tree.addItem(element.widget, 'Smoothing: Savgol')
+        self.tree.addItem(element.widget, 'SMOOTHING: Savgol')
