@@ -97,8 +97,22 @@ class SmoothingSavgolWidgetUI(QWidget):
         splitsettingslayout.addWidget(self.minNegRateBox)
 
 
+class DatapointsRemovePeriodicWidgetUI(QWidget):
+    def __init__(self):
+        super(QWidget, self).__init__()
 
+        self.layout = QFormLayout(self)
 
+        self.intervalBox = QSpinBox()
+        self.intervalBox.setMaximum(9999)
+        self.intervalBox.setMinimum(2)
+        self.intervalBox.setProperty("value", 2)
+        self.intervalBox.setStyleSheet("""QSpinBox {background: None;}""")
+        self.layout.addRow("Interval", self.intervalBox)
 
-
-
+        self.offsetBox = QSpinBox()
+        self.offsetBox.setMaximum(9999)
+        self.offsetBox.setMinimum(0)
+        self.offsetBox.setProperty("value", 0)
+        self.offsetBox.setStyleSheet("""QSpinBox {background: None;}""")
+        self.layout.addRow("Offset", self.offsetBox)

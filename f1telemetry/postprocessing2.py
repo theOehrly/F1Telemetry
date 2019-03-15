@@ -1,8 +1,12 @@
 # postprocessing of data received from image recognition
 
-from PyQt5.QtCore import QThread, pyqtSignal
 from scipy.signal import savgol_filter
 
+
+# #######################################
+# Sub-functions
+# The following functions are not called directly.
+# They provide sub functionality to the main processing functions.
 
 def strip_spaces(data):
     # d: list
@@ -188,6 +192,12 @@ def smooth_segmented(xdata, ydata, min_neg_change):
     return ydata_smooth
 
 
+# ########################################
+# Main processing functions
+# These functions are connected to treelements as their respective data processing functions
+# !!! These functions may not change the data they are given but must create a copy !!!
+# If data is not changed, creating a copy is not required
+
 def spikes_by_change(xdata, ydata, pmax, nmax):
         data_deriv = derive(xdata, ydata)
         spikes = find_spikes(data_deriv, pmax, nmax)
@@ -203,3 +213,16 @@ def smoothing(xdata, ydata, segmented, min_neg_change):
             new_ydata = smooth_full(ydata)
 
         return xdata, new_ydata
+
+
+def remove_datapoints_periodic(xdata, ydata, interval, index):
+    new_xdata = xdata.copy()
+    new_ydata = ydata.copy()
+    while index < len(new_xdata):
+        new_xdata.pop(index)
+        new_ydata.pop(index)
+
+        index += (interval - 1)
+        # minus 1 is required as the list gets shorter by one when removing
+    print(len(new_xdata))
+    return new_xdata, new_ydata

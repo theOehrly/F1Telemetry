@@ -39,7 +39,6 @@ class SmoothingSavgolWidget(widgetsui.SmoothingSavgolWidgetUI):
     def __init__(self, treeelement):
         super().__init__()
         self.treeelement = treeelement
-        # self.setupUi(self)
 
         self.minNegRateBox.valueChanged.connect(self.valueChanged)
         self.splitCheckBox.stateChanged.connect(self.valueChanged)
@@ -52,3 +51,16 @@ class SmoothingSavgolWidget(widgetsui.SmoothingSavgolWidgetUI):
             segmented = False
             min_neg_change = 0
         self.treeelement.processDataThreaded(segmented, min_neg_change)
+
+
+class DatapointsRemovePeriodicWidget(widgetsui.DatapointsRemovePeriodicWidgetUI):
+    def __init__(self, treeelement):
+        super().__init__()
+
+        self.treeelement = treeelement
+
+        self.intervalBox.valueChanged.connect(self.valueChanged)
+        self.offsetBox.valueChanged.connect(self.valueChanged)
+
+    def valueChanged(self):
+        self.treeelement.processDataThreaded(self.intervalBox.value(), self.offsetBox.value())

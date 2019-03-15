@@ -16,3 +16,4 @@ Issues:
 - size of Tree sidebar
 - drop down indicator icon
 - selection of ocr region
+- tools are not immediately applied when clicked

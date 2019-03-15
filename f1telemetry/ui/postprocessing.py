@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import QFileDialog
 
 from ui.postprocessing_ui import PostProcessingUI
-from ui.treewidgets.widgets import BaseWidget, SmoothingSavgolWidget, SpikesByChangeWidget
+from ui.treewidgets.widgets import (BaseWidget, SmoothingSavgolWidget, SpikesByChangeWidget,
+                                    DatapointsRemovePeriodicWidget)
 
 from datastruct import InteractiveDataSet
 import postprocessing2
@@ -34,6 +35,7 @@ class PostProcessing(PostProcessingUI):
 
         self.spikesRateBtn.clicked.connect(self.tool_spike_rate)
         self.smoothingSavgolBtn.clicked.connect(self.tool_smoothing)
+        self.datapointsRemovePeriodicBtn.clicked.connect(self.tool_datapoints_remove_periodic)
 
         self.showOriginalBox.toggled.connect(self.toggle_show_original)
         self.show_original = False  # boolean value; defines whether original data is plotted addionally to newest
@@ -121,3 +123,9 @@ class PostProcessing(PostProcessingUI):
         element.connectWidget(SmoothingSavgolWidget)
         element.setProcessingFunction(postprocessing2.smoothing)
         self.tree.addItem(element.widget, 'SMOOTHING: Savgol')
+
+    def tool_datapoints_remove_periodic(self):
+        element = self.dataset.active.newElementFromNewest('Remove Periodic')
+        element.connectWidget(DatapointsRemovePeriodicWidget)
+        element.setProcessingFunction(postprocessing2.remove_datapoints_periodic)
+        self.tree.addItem(element.widget, 'DATAPOINTS: Remove Periodic')
