@@ -1,3 +1,8 @@
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# !!! This file is not actually in use anymore !!!
+# It is just kept for now in case I want to port some of the old code
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 # postprocessing of data received from image recognition
 # order in csv file: speed, rpm, gear, brake, throttle, frame
 
