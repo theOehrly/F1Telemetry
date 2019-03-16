@@ -6,7 +6,8 @@ class SelectionData:
     def __init__(self):
         self.x = 0
         self.y = 0
-        self.radius = 0
+        self.width = 0
+        self.height = 0
         self.zero_frame = 0
         self.start_frame = 0
         self.end_frame = 0
@@ -17,11 +18,17 @@ class SelectionData:
     def set_y(self, y):
         self.y = int(y)
 
-    def set_radius(self, r):
-        self.radius = int(r)
+    def set_width(self, w):
+        self.width = int(w)
 
-    def set_radius_delta(self, rd):
-        self.radius += int(rd)
+    def set_width_delta(self, wd):
+        self.width += int(wd)
+
+    def set_height(self, h):
+        self.height = int(h)
+
+    def set_height_delta(self, hd):
+        self.height += int(hd)
 
     def set_start_frame(self, f):
         self.start_frame = int(f)

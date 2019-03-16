@@ -185,12 +185,7 @@ def create_label_masks(img):
 # -l Formula1: use special training data for F1 font
 # -c tessedit_char_whitelist=0123456789 : only allow numbers
 
-def do_ocr_speed(img, size):
-    ocr_speed_roi = img[int(0.75*size):int(0.95*size),
-                        int(0.32*size):int(0.69*size)]
-
-    # cv2.imshow('test', ocr_speed_roi)
-    # cv2.waitKey(1)
+def do_ocr_speed(ocr_speed_roi):
     value = pytesseract.image_to_string(ocr_speed_roi,
                                         config='--psm 8 -l f1a -c tessedit_char_whitelist=0123456789')
     value = value.replace(' ', '')
@@ -227,15 +222,6 @@ def recognize(filename, outfile, uid, selection, parentQThread):
 
         timecode_offset = selection.zero_frame * (1000 / capture.get(cv2.CAP_PROP_FPS))  # set timecode for first frame
 
-        # create roi image
-        x1 = selection.x - selection.radius
-        x2 = selection.x + selection.radius
-        y1 = selection.y - selection.radius
-        y2 = selection.y + selection.radius
-        roi_image_size = selection.radius * 2  # roi image is always a square so x = y in terms of size
-
-        # roi_img = base_image[y1:y2, x1:x2]
-
         csv_file = open(outfile, "w")
         # write headers
         headers = ['time', 'speed']
@@ -251,13 +237,14 @@ def recognize(filename, outfile, uid, selection, parentQThread):
             ret, frame = capture.read()
 
             if ret:
-                roi_img = frame[y1:y2, x1:x2]
+                roi_img = frame[selection.y: selection.y + selection.height,
+                                selection.x: selection.x + selection.width]
 
                 label_subtraction_mask, label_ocr_mask = create_label_masks(roi_img)
 
                 # do recognition threaded
 
-                value = do_ocr_speed(label_ocr_mask, roi_image_size)
+                value = do_ocr_speed(label_ocr_mask)
 
                 # print(value)
 

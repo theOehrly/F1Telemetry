@@ -24,17 +24,15 @@ class Overlay(QWidget):
     def paintEvent(self, event):
         x = ((self.parent.selection.x + 1) * self.parent.videoscale) + self.parent.display_margins[0]
         y = ((self.parent.selection.y + 1) * self.parent.videoscale) + self.parent.display_margins[1]
-        r = self.parent.selection.radius * self.parent.videoscale
+        w = self.parent.selection.width * self.parent.videoscale
+        h = self.parent.selection.height * self.parent.videoscale
 
         painter = QPainter()
         painter.begin(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
         painter.setPen(QPen(QtCore.Qt.red, 1.0))
-        painter.drawEllipse(x - r, y - r, 2*r, 2*r)
-
-        painter.setPen(QPen(QtCore.Qt.red, 4.0))
-        painter.drawPoint(x, y)
+        painter.drawRect(x, y, w, h)
 
         painter.setPen(QPen(QtCore.Qt.NoPen))
 
@@ -125,7 +123,8 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
             # set selection to something sane
             self.selection.set_x(self.videores[0] / 2)
             self.selection.set_y(self.videores[1] / 2)
-            self.selection.set_radius(self.videores[1] / 6)
+            self.selection.set_width(self.videores[0] / 10)
+            self.selection.set_height(self.videores[1] / 10)
 
             # draw first frame, scale it properly and enable control buttons
             self.singleframe = True
@@ -348,10 +347,17 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         if not self.videosource.capture:
             return
         # increase or decrease selection size by scrolling
-        if _event.angleDelta().y() > 0:
-            self.selection.set_radius_delta(1)
-        elif _event.angleDelta().y() < 0 and self.selection.radius > 0:
-            self.selection.set_radius_delta(-1)
+        # modify height by default and modify width when shift is held down
+        if self.window().application.keyboardModifiers() == QtCore.Qt.ShiftModifier:
+            if _event.angleDelta().y() > 0:
+                self.selection.set_width_delta(1)
+            elif _event.angleDelta().y() < 0 and self.selection.width > 0:
+                self.selection.set_width_delta(-1)
+        else:
+            if _event.angleDelta().y() > 0:
+                self.selection.set_height_delta(1)
+            elif _event.angleDelta().y() < 0 and self.selection.height > 0:
+                self.selection.set_height_delta(-1)
 
         # only redraw frame when not playing to save unnecessary pixmap updates
         if not self.playing:
