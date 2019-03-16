@@ -3,6 +3,8 @@ from PyQt5.QtWidgets import QFileDialog
 from ui.customwidgets import StartRecognitionDialog
 from ui.videorecognition_ui import VideoRecognitionUI
 
+from datastruct import SelectionData
+
 
 class VideoRecognition(VideoRecognitionUI):
     def __init__(self):
@@ -10,6 +12,7 @@ class VideoRecognition(VideoRecognitionUI):
         self.init_ui()
 
         self.videofile = str()
+        self.selection = SelectionData()
 
         self.background_worker = None
         self.progress_dialog = None
@@ -22,7 +25,7 @@ class VideoRecognition(VideoRecognitionUI):
         filepath, _ = QFileDialog.getOpenFileName(self, "Open Videofile", "", "Video files (*.*)")
         if filepath:
             self.videofile = filepath
-            self.videoplayer.open_file(self.videofile)
+            self.videoplayer.open_file(self.videofile, self.selection)
 
     def run_recognition(self):
         dialog = StartRecognitionDialog(self)

@@ -41,13 +41,13 @@ class Overlay(QWidget):
 
 class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
     """A Videoplayer that features variable playback speed, frame by frame and a draggable timeline slider."""
-    def __init__(self, parentwidget, selection_data):
+    def __init__(self, parentwidget):
         super().__init__(parentwidget)
 
         # the videosource handles reading and delivering frames as well as seeking, playbackspeed,...
         self.videosource = VideoSource()
 
-        self.selection = selection_data  # selected region of interest and timeframe for OCR
+        self.selection = None  # selected region of interest and timeframe for OCR
 
         self.setupUi(self)
 
@@ -96,9 +96,10 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         self.btn_markend.clicked.connect(self.set_end_frame)
         self.btn_markzero.clicked.connect(self.set_zero_frame)
 
-    def open_file(self, filepath):
+    def open_file(self, filepath, selection):
         """Opens a videofile; currently fails silent if the file can not be opened."""
         self.videosource.open_file(filepath)
+        self.selection = selection
         # videosource discards any files that don't seem to be videofiles
         # in that case videosource.capture will be None
         self.load_video()
@@ -140,6 +141,7 @@ class VideoPlayerWidget(QWidget, Ui_VideoPlayer):
         if _event.type() == QInputEvent.MouseMove and _event.buttons() == QtCore.Qt.LeftButton:
             _event.accept()
             self.mouse_drag(_event)
+
             return True
         elif _event.type() == QInputEvent.Wheel:
             _event.accept()

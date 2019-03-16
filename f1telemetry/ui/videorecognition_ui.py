@@ -5,8 +5,6 @@ from ui.customwidgets import F1ToolBarButton
 from ui.uibaseelements import create_toolbar_category, create_toolbar_divider, create_toolbar_spacer
 from ui.videoplayerwidget import VideoPlayerWidget
 
-from datastruct import SelectionData
-
 FONT = QFont('Bahnschrift')
 
 
@@ -80,6 +78,5 @@ class VideoRecognitionUI(QWidget):
         # ########### Content ########################
         ##############################################
 
-        selection = SelectionData()  # TODO Fix: SelectionData should not be defined in UI file
-        self.videoplayer = VideoPlayerWidget(self, selection)
+        self.videoplayer = VideoPlayerWidget(self)
         mainlayout.addWidget(self.videoplayer)
