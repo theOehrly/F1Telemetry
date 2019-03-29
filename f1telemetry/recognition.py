@@ -185,9 +185,14 @@ def create_label_masks(img):
 # -l Formula1: use special training data for F1 font
 # -c tessedit_char_whitelist=0123456789 : only allow numbers
 
-def do_ocr_speed(ocr_speed_roi):
-    value = pytesseract.image_to_string(ocr_speed_roi,
-                                        config='--psm 8 -l f1a -c tessedit_char_whitelist=0123456789')
+def do_ocr_speed(ocr_speed_roi, new_font):
+    if new_font:
+        value = pytesseract.image_to_string(ocr_speed_roi,
+                                            config='--psm 8 -l f1n -c tessedit_char_whitelist=0123456789')
+    else:
+        value = pytesseract.image_to_string(ocr_speed_roi,
+                                            config='--psm 8 -l f1a -c tessedit_char_whitelist=0123456789')
+
     value = value.replace(' ', '')
     # print(value)
     return value
@@ -216,7 +221,7 @@ def do_ocr_gear(img, data, index, size):
     data[index] = value
 
 
-def recognize(filename, outfile, uid, selection, parentQThread):
+def recognize(filename, outfile, uid, selection, new_font, parentQThread):
     try:
         capture = cv2.VideoCapture(filename)
 
@@ -244,7 +249,13 @@ def recognize(filename, outfile, uid, selection, parentQThread):
 
                 # do recognition threaded
 
-                value = do_ocr_speed(label_ocr_mask)
+                value = do_ocr_speed(label_ocr_mask, new_font)
+
+                # if cnt % 10 == 0:
+                #     cv2.imshow('e', label_ocr_mask)
+                #     fname = str(cnt)+'.png'
+                #     cv2.imwrite(fname, label_ocr_mask)
+                #     print('*', fname)
 
                 # print(value)
 

@@ -1,7 +1,8 @@
 from pyqtgraph import PlotWidget
-from PyQt5.Qt import QSize, QFont, QIcon, QFontMetrics, QPoint
+from PyQt5.Qt import QSize, QFont, QIcon, QFontMetrics, QPixmap
 from PyQt5.QtWidgets import (QToolButton, QCheckBox, QSizePolicy, QSpacerItem, QWidget, QVBoxLayout, QHBoxLayout,
-                             QLabel, QPushButton, QDialog, QFormLayout, QLineEdit, QFileDialog, QProgressDialog)
+                             QLabel, QPushButton, QDialog, QLineEdit, QFileDialog, QProgressDialog,
+                             QGroupBox, QRadioButton)
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from backgroundtasks import OCRWorker
@@ -391,40 +392,81 @@ class StartRecognitionDialog(QDialog):
 
         self.output_folder_path = None
 
-        self.layout = QFormLayout(self)
-        self.layout.setHorizontalSpacing(40)
+        self.layout = QVBoxLayout(self)
+        self.layout.setSpacing(15)
 
+        # output folder
         outputfolderlabel = QLabel()
         outputfolderlabel.setText('Output Folder')
         outputfolderlabel.setStyleSheet("""QLabel {font: bold;
                                                     color: #373a3e;}""")
+        outputfolderlabel.setFixedWidth(100)
         self.outputFolderPathLbl = LeftElidingLabel()
         self.outputFolderPathLbl.setMinimumWidth(250)
         self.outputFolderPathLbl.setFont(FONT)
         self.outputFolderPathLbl.setStyleSheet("""QLabel {font: 10pt;}""")
         self.outputFolderBtn = F1PushButton()
-        # self.outputFolderBtn.setText('...')
         self.outputFolderBtn.setIcon(QIcon('./ui/images/open.png'))
         self.outputFolderBtn.setIconSize(QSize(30, 30))
         self.outputFolderBtn.setFixedSize(30, 30)
         self.outputFolderBtn.clicked.connect(self.getOutputFolder)
         outputfolderlayout = QHBoxLayout()
         outputfolderlayout.setSpacing(10)
+        outputfolderlayout.addWidget(outputfolderlabel)
         outputfolderlayout.addWidget(self.outputFolderPathLbl)
         outputfolderlayout.addWidget(self.outputFolderBtn)
-        self.layout.addRow(outputfolderlabel, outputfolderlayout)
+        self.layout.addLayout(outputfolderlayout)
 
+        # uid
         uidlabel = QLabel()
         uidlabel.setText('Unique ID')
         uidlabel.setStyleSheet("""QLabel {font: bold;
                                             color: #373a3e;}""")
 
         uidlabel.setToolTip('A unique identifier for the dataset')
+        uidlabel.setFixedWidth(100)
         self.uidLineEdit = F1LineEdit()
         self.uidLineEdit.setStyleSheet(self.uidLineEdit.styleSheet() + """QLineEdit {font: 10pt;}""")
         self.uidLineEdit.setFixedHeight(25)
-        self.layout.addRow(uidlabel, self.uidLineEdit)
+        uidlayout = QHBoxLayout()
+        uidlayout.addWidget(uidlabel)
+        uidlayout.addWidget(self.uidLineEdit)
+        self.layout.addLayout(uidlayout)
 
+        # chose font type (new/old)
+        groupbox = QGroupBox('Choose Font Style')
+        groupbox.setFont(FONT)
+        groupbox.setStyleSheet("""  QGroupBox { border: 1px solid #3c9af7;
+                                                margin-top: 10px;
+                                                font: 500 8pt Regular Condensed;}
+                                    QGroupBox::title {  subcontrol-origin: margin;
+                                                        subcontrol-position: top left;
+                                                        color: #373a3e;}
+                                    """)
+        groupboxlayout = QHBoxLayout(groupbox)
+        groupboxlayout.setSpacing(50)
+
+        self.oldFontRdb = QRadioButton("Old")
+        oldfontimg = QLabel()
+        oldfontimg.setPixmap(QPixmap('./ui/images/oldfont.png').scaled(70, 150, Qt.KeepAspectRatio))
+        oldfontlayout = QHBoxLayout()
+        oldfontlayout.setSpacing(10)
+        oldfontlayout.addWidget(self.oldFontRdb)
+        oldfontlayout.addWidget(oldfontimg, Qt.AlignCenter, Qt.AlignLeft)
+        groupboxlayout.addLayout(oldfontlayout)
+
+        self.newFontRdb = QRadioButton("New")
+        newfontimg = QLabel()
+        newfontimg.setPixmap(QPixmap('./ui/images/newfont.png').scaled(70, 150, Qt.KeepAspectRatio))
+        newfontlayout = QHBoxLayout()
+        newfontlayout.setSpacing(10)
+        newfontlayout.addWidget(self.newFontRdb)
+        newfontlayout.addWidget(newfontimg, Qt.AlignCenter, Qt.AlignLeft)
+        groupboxlayout.addLayout(newfontlayout)
+
+        self.layout.addWidget(groupbox)
+
+        # cancel / run button + error label
         self.runBtn = F1PushButton()
         self.runBtn.setIcon(QIcon('./ui/images/runrecognition.png'))
         self.runBtn.setIconSize(QSize(45, 30))
@@ -436,10 +478,6 @@ class StartRecognitionDialog(QDialog):
         self.cancelBtn.setFixedSize(40, 40)
         self.cancelBtn.clicked.connect(self.close)
 
-        spacerwidget = QWidget(self)
-        spacerwidget.setFixedHeight(20)
-        self.layout.addRow(None, spacerwidget)
-
         controllayout = QHBoxLayout()
         controllayout.setSpacing(10)
         self.errorLbl = QLabel()
@@ -447,7 +485,7 @@ class StartRecognitionDialog(QDialog):
         controllayout.addWidget(self.errorLbl)
         controllayout.addWidget(self.cancelBtn)
         controllayout.addWidget(self.runBtn)
-        self.layout.addRow("", controllayout)
+        self.layout.addLayout(controllayout)
 
     def getOutputFolder(self):
         path = QFileDialog.getExistingDirectory(self, "Select Output Folder", "", QFileDialog.ShowDirsOnly)
@@ -464,6 +502,9 @@ class StartRecognitionDialog(QDialog):
         if not uid:
             self.errorLbl.setText("Missing Parameter: Unique ID")
             return
+        if not self.oldFontRdb.isChecked() and not self.newFontRdb.isChecked():
+            self.errorLbl.setText("Missing Parameter: Font Style")
+            return
 
         # show progress bar
         n_frames = self.parent.videoplayer.selection.end_frame - self.parent.videoplayer.selection.start_frame
@@ -475,7 +516,8 @@ class StartRecognitionDialog(QDialog):
 
         # run ocr in seperate QThread
         outfile = self.output_folder_path + '/' + uid + '.csv'
-        self.worker = OCRWorker(self.parent.videofile, outfile, uid, self.parent.videoplayer.selection)
+        self.worker = OCRWorker(self.parent.videofile, outfile, uid, self.parent.videoplayer.selection,
+                                self.newFontRdb.isChecked())
         self.worker.progressUpdate.connect(self.update_ocr_progress)
         self.worker.finished.connect(self.update_ocr_finished)
         self.worker.start()

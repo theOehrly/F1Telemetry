@@ -13,9 +13,13 @@ Videoplay and Source:
 
 
 Issues:
+- crashes when reopening its own files
 - crash when having remove interval after savgol and then diasabling splitting for savgol
+- crash when starting ocr but having no video opened
 - size of Tree sidebar
 - drop down indicator icon
 - selection of ocr region
 - tools are not immediately applied when clicked
 - add general lost_focus function to tree items for disabling / hiding them
+- add lap time relative to selected zero point
+- stick selection rectangle bottom right to mouse cursor istead of top left

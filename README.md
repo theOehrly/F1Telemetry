@@ -16,8 +16,8 @@ Dependencies:
 - pytesseract and Tesseract OCR
 - scipy
 
-Use the f1a language file from the trainingdata folder for tesseract.
-It needs to be copied into the appropriate foler of your tesseract installation. 
+The f1a and f1n file from the tessdata folder need to be copied into the appropriate foler 
+of your tesseract installation. 
 
 
 Basic Usage:
@@ -44,6 +44,7 @@ When done, click save. You will be ask where you want to save the data.
 Current Issues:
 - 
 - (CRITICAL): using the remove data periodically tool after smoothing may crash the application
+- (CRITICAL): reopening a file that has be saved after postprocessing crashes the application
 - added tools can not yet be removed (planned)
 - also undo is not implemented (not planned)
 - Videoplayer is slow(ish); dragging through the timeline may be a few (dozen) frames off

@@ -10,16 +10,17 @@ class OCRWorker(QThread):
     finished = pyqtSignal()
     STOP = False
 
-    def __init__(self, fname, outfile, uid, selection):
+    def __init__(self, fname, outfile, uid, selection, new_font=False):
         super().__init__()
 
         self.filename = fname
         self.outfile = outfile
         self.uid = uid
         self.selection = selection
+        self.new_font = new_font
 
     def run(self):
-        recognition.recognize(self.filename, self.outfile, self.uid, self.selection, self)
+        recognition.recognize(self.filename, self.outfile, self.uid, self.selection, self.new_font, self)
 
     def update_progress(self, frame):
         self.progressUpdate.emit(frame)
