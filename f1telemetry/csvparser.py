@@ -21,7 +21,10 @@ def read_csv_file(filepath):
             x.append(float(row[0]))  # copy the x value into it's list
 
             for i in range(num_datasets):
-                ysets[i].append(float(row[i + 1]))  # copy each y value into it's respective list
+                try:
+                    ysets[i].append(float(row[i + 1]))  # copy each y value into it's respective list
+                except ValueError:
+                    ysets[i].append(float(0))
 
         csv_in.close()
 
