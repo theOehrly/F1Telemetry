@@ -1,6 +1,16 @@
 F1 Telemetry
 -
 
+!! DEPRECATION MESSAGE !!
+
+This software is deprecated and I am not planning on doing further developement on this software. 
+I had focused a lot on cleaning up raw data from OCR beacause reading the overlayed graphics was never completely accurate. 
+Now that we can obtain screen records of only the telemetry itself via F1 TV Access, this is no longer necessary.
+Reading data from these recordings is possible with near 100% accuracy and other people have done a better job on that already.
+This data is available online for example on: https://unendinginsight.wordpress.com/ (not my blog) 
+
+# # 
+
 This software is alpha grade Software!!! Don't confuse it or it may do unexpected stuff (probably just crash)!
 Beware of the list of issues below.
 
@@ -35,7 +45,7 @@ It is also used as a prefix for the column headers of the csv file.
 - Postprocessing Environment:
 Open a previously created CSV file. The data can be cleaned up by removing spikes (wrong OCR results),
 remove frames periodically (bad frames in fixed intervals) and do some smoothing (nicer presentation).
-To make sure nothing important changed, the original data can be overlayed (checkbox bottom right).
+To make sure nothing important was changed, the original data can be overlayed (checkbox bottom right).
 The history of applied tools is shown in the "Tree" tab. Values for previously applied tools can be
 changed afterwards. The software will calculated all the following modifications again based on the new data.
 When done, click save. You will be ask where you want to save the data.
